@@ -63,7 +63,7 @@ void CheckSDLError(int line = -1)
 		SDL_ClearError();
 	}
 }
-
+#ifdef FOO
 int main() {
 	std::string shaderpath = "F:/github/SAS_3D/shaders/";
 	std::string mediapath = "F:/github/SAS_3D/media/";
@@ -187,3 +187,4 @@ int main() {
 
 	return 0;
 }
+#endif

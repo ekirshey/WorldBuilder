@@ -4,6 +4,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <glm/ext.hpp>
+
 #include <SDL.h>
 
 class Camera {
@@ -82,6 +84,10 @@ public:
 	}
 
 	glm::mat4 GetViewMatrix() {
+		/*glm::mat4x4 lookat;
+		lookat[0] = glm::normalize(_cameraPos + _cameraFront);
+		lookat[3] = glm::vec4(-_cameraPos,1);
+		*/
 		return glm::lookAt(_cameraPos, _cameraPos + _cameraFront, _cameraUp);
 	}
 
