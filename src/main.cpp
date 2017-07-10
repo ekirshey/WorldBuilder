@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 #include <fstream>
 #include <imgui.h>
 #include "imgui_impl_sdl_gl3.h"
@@ -17,8 +18,10 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Camera.h"
-
+#include "Texture.h"
 #include <glm/ext.hpp>
+
+#define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
 
 void buildPlane(GLfloat topleft_x, GLfloat topleft_y, int rows, int cols, std::vector<GLfloat>& vertices, std::vector<unsigned int>& indices) {
 	GLfloat colwidth = std::fabs(topleft_x) * 2 / cols;
@@ -27,8 +30,11 @@ void buildPlane(GLfloat topleft_x, GLfloat topleft_y, int rows, int cols, std::v
 	for (int i = 0; i <= rows; i++) {
 		for (int j = 0; j <= cols; j++) {
 			vertices.push_back(topleft_x + (j*colwidth));
-			vertices.push_back(topleft_y - (i*rowwidth));
 			vertices.push_back(0.0f);;
+			vertices.push_back(topleft_y - (i*rowwidth));
+
+			vertices.push_back(topleft_x + (j*colwidth));
+			vertices.push_back(topleft_y - (i*rowwidth));
 		}
 	}
 
@@ -98,11 +104,19 @@ bool triangleIntersection(glm::vec3 V0, glm::vec3 V1, glm::vec3 V2, glm::vec3 O,
 	return false;
 }
 
+struct textureinfo {
+	std::string name;
+	bool state;
+};
 int main(int, char**)
 {
+	bool wireframe = false;
+	std::unordered_map<GLuint, textureinfo> texture_list;
 	int screenWidth = 1280;
 	int screenHeight = 720;
 	std::string shaderpath = "F:/github/WorldBuilder/shaders/";
+	std::string mediapath = "F:/github/WorldBuilder/media/";
+
 	Camera camera(screenWidth, screenHeight);
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
@@ -169,29 +183,32 @@ int main(int, char**)
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 
-
-	// Set up vertex data (and buffer(s)) and attribute pointers
-	//GLfloat vertices[] = {
-	//  // First triangle
-	//   0.5f,  0.5f,  // Top Right
-	//   0.5f, -0.5f,  // Bottom Right
-	//  -0.5f,  0.5f,  // Top Left 
-	//  // Second triangle
-	//   0.5f, -0.5f,  // Bottom Right
-	//  -0.5f, -0.5f,  // Bottom Left
-	//  -0.5f,  0.5f   // Top Left
-	//}; 
-	GLfloat vertices[] = {
-		0.5f,  0.5f, 0.0f,  // Top Right
-		0.5f, -0.5f, 0.0f,  // Bottom Right
-		-0.5f, -0.5f, 0.0f,  // Bottom Left
-		-0.5f,  0.5f, 0.0f   // Top Left 
+	std::vector<GLfloat> cube = {
+		-0.5, -0.5, -0.5,
+		0.5, -0.5, -0.5,
+		0.5,  0.5, -0.5,
+		-0.5,  0.5, -0.5,
+		-0.5, -0.5,  0.5,
+		0.5, -0.5,  0.5,
+		0.5,  0.5,  0.5,
+		-0.5,  0.5,  0.5,
 	};
-	GLfloat new_vertex[] = { 0.0f, 0.5f, 0.0f };
+
+	std::vector<unsigned int> cube_indices{
+		0,1,1,2,2,3,3,0, // First square
+		0,4,1,5,2,6,3,7, // connections
+		4,5,5,6,6,7,7,4  // Second square
+	};
 
 	std::vector<GLfloat> genverts;
 	std::vector<unsigned int> indices;
-	buildPlane(-1.0f, 1.0f, 10, 10, genverts, indices);
+	buildPlane(-1.0f, 1.0f, 100, 100, genverts, indices);
+
+	GLuint texture = LoadTexture(mediapath + "container2.png", GL_RGBA);
+	textureinfo t;
+	t.name = "Container2";
+	t.state = true;
+	texture_list.insert({ texture, t });
 
 	GLuint VBO, VAO, EBO;
 	glGenVertexArrays(1, &VAO);
@@ -206,9 +223,33 @@ int main(int, char**)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_DYNAMIC_DRAW);
 
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(1);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
+
+	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
+
+	GLuint CUBEVBO, CUBEVAO, CUBEEBO;
+	glGenVertexArrays(1, &CUBEVAO);
+	glGenBuffers(1, &CUBEVBO);
+	glGenBuffers(1, &CUBEEBO);
+	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
+	glBindVertexArray(CUBEVAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, CUBEVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * cube.size(), cube.data(), GL_DYNAMIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, CUBEEBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * cube_indices.size(), cube_indices.data(), GL_DYNAMIC_DRAW);
+
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
+	// Is this needed?
 	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
 
 	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
@@ -231,9 +272,16 @@ int main(int, char**)
     bool done = false;
 	bool mousedown = false;
 	bool keys[1024] = { false };
+
+	bool boxdraw = false;
+	bool shiftdown = false;
+	glm::vec3 boxstart;
+	glm::mat4 box_model;
+	glm::mat4 scaled_box_model;
+	std::vector<int> indices_in_box;
+	GLfloat box_scale = 0.1f;
     while (!done)
     {
-		mousedown = false;
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -270,18 +318,59 @@ int main(int, char**)
 		SDL_GetMouseState(&xpos, &ypos);
 		camera.Update(xpos, ypos, keys);
 
+		// Key handling
+		moveX = 0.0f;
+		moveY = 0.0f;
+		moveZ = 0.0f;
+		// if vertex selected
+		if (keys[SDL_SCANCODE_LSHIFT]) {
+			shiftdown = true;
+		}
+		else {
+			shiftdown = false;
+		}
+		if (keys[SDL_SCANCODE_H]) {
+			moveX = -0.01f;
+		}
+		if (keys[SDL_SCANCODE_L]) {
+			moveX = 0.01f;
+		}
+		if (keys[SDL_SCANCODE_J]) {
+			moveY = -0.01f;
+		}
+		if (keys[SDL_SCANCODE_K]) {
+			moveY = 0.01f;
+		}
+		if (keys[SDL_SCANCODE_N]) {
+			moveZ = -0.01f;
+		}
+		if (keys[SDL_SCANCODE_M]) {
+			moveZ = 0.01f;
+		}
+
+
         ImGui_ImplSdlGL3_NewFrame(window);
+		char buf[256] = "";
 
         // 1. Show a simple window
         // Tip: if we don't call ImGui::Begin()/ImGui::End() the widgets appears in a window automatically called "Debug"
         {
-            static float f = 0.0f;
-            ImGui::Text("Hello, world!");
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-            ImGui::ColorEdit3("clear color", (float*)&window_color);
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Mouse X: %d Mouse Y: %d", xpos, ypos);
-			
+			if (ImGui::InputText("Add Texture", buf, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+				textureinfo t;
+				t.name = std::string(buf);
+				t.state = false;
+				GLuint texture = LoadTexture(mediapath + t.name, GL_RGB);
+				texture_list.insert({ texture, t });
+			}
+
+			ImGui::Checkbox("Wireframe", &wireframe);
+
+			for (auto it = texture_list.begin(); it != texture_list.end(); ++it) {
+				ImGui::Checkbox(it->second.name.c_str(), &it->second.state);
+			}
+
         }
 
         // Rendering
@@ -321,88 +410,107 @@ int main(int, char**)
 			ray_world = glm::inverse(view) * ray_eye;
 			ray_world = glm::normalize(ray_world);
 
-			// First check for triangle intersection
-			glm::vec3 camera3 = glm::vec3(camerapos.x, camerapos.y, camerapos.z);
-			// Check 2 triangles at a time
-			vertex_selected = false;
-			triangle_selected = false;
-			for (int i = 0; i < genverts.size(); i += 3) {
-				glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
-				double distance = glm::distance(camerapos, glm::vec4(currentpoint, 1.0f));
-				glm::vec4 ray = camerapos + glm::vec4(ray_world, 1.0f)*distance;
-				if ((ray.x <= currentpoint.x + 0.01) && (ray.x >= currentpoint.x - 0.01) &&
-					(ray.y <= currentpoint.y + 0.01) && (ray.y >= currentpoint.y - 0.01) &&
-					(ray.z <= currentpoint.z + 0.01) && (ray.z >= currentpoint.z - 0.01)
-					) {
-					vertex_selected = true;
-					selected_vertex = glm::vec4(currentpoint, 1.0f);
-					selected_index = i;
-					break;
-				}
-
+			if (shiftdown & !boxdraw) {
+				std::cout << glm::to_string(ray_world) << " " << glm::to_string(camera.Position() + ray_world) << std::endl;
+				boxdraw = true;
+				boxstart = ray_world;
+				glm::vec3 normal(0.0f, 1.0f, 0.0f);
+				GLfloat o_dot_n = glm::dot(camera.Position(), normal);
+				glm::vec3 offset = camerapos;
+				GLfloat d_dot_n = glm::dot(ray_world, normal);
+				auto planedistance = -1* (o_dot_n) / (d_dot_n);
+				box_model = glm::translate(glm::vec3(ray_world.x * planedistance +camerapos.x, 0.0f, ray_world.z*planedistance+camerapos.z));
+				scaled_box_model = glm::scale(box_model, glm::vec3(box_scale, 1.0f, box_scale));
 			}
-
-			if (!vertex_selected) {
-				for (int i = 0; i < indices.size(); i += 6) {
-					glm::vec3 lt_0 = glm::vec3(genverts[indices[i]*3], genverts[indices[i] * 3 + 1], genverts[indices[i] * 3 + 2]);
-					glm::vec3 lt_1 = glm::vec3(genverts[indices[i+1]*3], genverts[indices[i+1] * 3 + 1], genverts[indices[i+1] * 3 + 2]);
-					glm::vec3 lt_2 = glm::vec3(genverts[indices[i+2]*3], genverts[indices[i+2] * 3 + 1], genverts[indices[i+2] * 3 + 2]);
-					if (triangleIntersection(lt_0, lt_1, lt_2, camera3, ray_world)) {
-						triangle_selected = true;
-						selected_triangle = i;
-						break;
-					}
-
-					glm::vec3 rt_0 = glm::vec3(genverts[indices[i + 3] * 3], genverts[indices[i + 3] * 3 + 1], genverts[indices[i + 3] * 3 + 2]);
-					glm::vec3 rt_1 = glm::vec3(genverts[indices[i + 4] * 3], genverts[indices[i + 4] * 3 + 1], genverts[indices[i + 4] * 3 + 2]);
-					glm::vec3 rt_2 = glm::vec3(genverts[indices[i + 5] * 3], genverts[indices[i + 5] * 3 + 1], genverts[indices[i + 5] * 3 + 2]);
-					if (triangleIntersection(rt_0, rt_1, rt_2, camera3, ray_world)) {
-						triangle_selected = true;
-						selected_triangle = i+3;
-						break;
+			else if( shiftdown & boxdraw ) {
+				GLfloat movement = glm::distance(ray_world, boxstart)*2;
+				if (movement < 0.1f) {
+					movement = 0.1f;
+				}
+				scaled_box_model = glm::scale(box_model, glm::vec3(movement, 1.0f, movement));
+			
+				GLfloat leftbound = box_model[3][0] + (movement * -0.5);
+				GLfloat rightbound = box_model[3][0] + (movement * 0.5);
+				GLfloat frontbound = box_model[3][2] + (movement * 0.5);
+				GLfloat backbound = box_model[3][2] + (movement * -0.5);
+				indices_in_box.clear();
+				for (int i = 0; i < genverts.size(); i += 5) {
+					glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
+					if ((currentpoint.x <= rightbound) && (currentpoint.x >= leftbound) &&
+						(currentpoint.z <= frontbound) && (currentpoint.z >= backbound) 
+						) {
+						indices_in_box.push_back(i);
 					}
 				}
 			}
+			else {	// If not drawing a box, check the normal ray intersections
+				boxdraw = false;
+				// First check for triangle intersection
+				glm::vec3 camera3 = glm::vec3(camerapos.x, camerapos.y, camerapos.z);
+				// Check 2 triangles at a time
+				vertex_selected = false;
+				triangle_selected = false;
+				for (int i = 0; i < genverts.size(); i += 5) {
+					glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
+					double distance = glm::distance(camerapos, glm::vec4(currentpoint, 1.0f));
+					glm::vec4 ray = camerapos + glm::vec4(ray_world, 1.0f)*distance;
+					if ((ray.x <= currentpoint.x + 0.001) && (ray.x >= currentpoint.x - 0.001) &&
+						(ray.y <= currentpoint.y + 0.001) && (ray.y >= currentpoint.y - 0.001) &&
+						(ray.z <= currentpoint.z + 0.001) && (ray.z >= currentpoint.z - 0.001)
+						) {
+						vertex_selected = true;
+						selected_vertex = glm::vec4(currentpoint, 1.0f);
+						selected_index = i;
+						break;
+					}
+				}
 
-		}
+				if (!vertex_selected) {
+					for (int i = 0; i < indices.size(); i += 6) {
+						glm::vec3 lt_0 = glm::vec3(genverts[indices[i] * 5], genverts[indices[i] * 5 + 1], genverts[indices[i] * 5 + 2]);
+						glm::vec3 lt_1 = glm::vec3(genverts[indices[i + 1] * 5], genverts[indices[i + 1] * 5 + 1], genverts[indices[i + 1] * 5 + 2]);
+						glm::vec3 lt_2 = glm::vec3(genverts[indices[i + 2] * 5], genverts[indices[i + 2] * 5 + 1], genverts[indices[i + 2] * 5 + 2]);
+						if (triangleIntersection(lt_0, lt_1, lt_2, camera3, ray_world)) {
+							triangle_selected = true;
+							selected_triangle = i;
+							break;
+						}
+						
+						glm::vec3 rt_0 = glm::vec3(genverts[indices[i + 3] * 5], genverts[indices[i + 3] * 5 + 1], genverts[indices[i + 3] * 5 + 2]);
+						glm::vec3 rt_1 = glm::vec3(genverts[indices[i + 4] * 5], genverts[indices[i + 4] * 5 + 1], genverts[indices[i + 4] * 5 + 2]);
+						glm::vec3 rt_2 = glm::vec3(genverts[indices[i + 5] * 5], genverts[indices[i + 5] * 5 + 1], genverts[indices[i + 5] * 5 + 2]);
+						if (triangleIntersection(rt_0, rt_1, rt_2, camera3, ray_world)) {
+							triangle_selected = true;
+							selected_triangle = i + 3;
+							break;
+						}
+					}
+				}
+			}
 
-		moveX = 0.0f;
-		moveY = 0.0f;
-		moveZ = 0.0f;
-		// if vertex selected
-		if (keys[SDL_SCANCODE_H]) {
-			moveX = -0.1f;
-		}
-		if (keys[SDL_SCANCODE_L]) {
-			moveX = 0.1f;
-		}
-		if (keys[SDL_SCANCODE_J]) {
-			moveY = -0.1f;
-		}
-		if (keys[SDL_SCANCODE_K]) {
-			moveY = 0.1f;
-		}
-		if (keys[SDL_SCANCODE_N]) {
-			moveZ = -0.01f;
-		}
-		if (keys[SDL_SCANCODE_M]) {
-			moveZ = 0.01f;
 		}
 
 		// adjust selected vertex
-		if (vertex_selected | triangle_selected) {
-			if (triangle_selected) {
-				genverts[indices[selected_triangle] * 3] += moveX;
-				genverts[indices[selected_triangle] * 3 + 1] += moveY;
-				genverts[indices[selected_triangle] * 3 + 2] += moveZ;
+		if (vertex_selected | triangle_selected | boxdraw) {
+			if (boxdraw) {
+				for (int i = 0; i < indices_in_box.size(); i++) {
+					genverts[indices_in_box[i]] += moveX;
+					genverts[indices_in_box[i] + 1] += moveY;
+					genverts[indices_in_box[i] + 2] += moveZ;
+				}
+			}
+			else if (triangle_selected) {
+				genverts[indices[selected_triangle] * 5] += moveX;
+				genverts[indices[selected_triangle] * 5 + 1] += moveY;
+				genverts[indices[selected_triangle] * 5 + 2] += moveZ;
 
-				genverts[indices[selected_triangle + 1] * 3] += moveX;
-				genverts[indices[selected_triangle + 1] * 3 + 1] += moveY;
-				genverts[indices[selected_triangle + 1] * 3 + 2] += moveZ;
+				genverts[indices[selected_triangle + 1] * 5] += moveX;
+				genverts[indices[selected_triangle + 1] * 5 + 1] += moveY;
+				genverts[indices[selected_triangle + 1] * 5 + 2] += moveZ;
 
-				genverts[indices[selected_triangle + 2] * 3] += moveX;
-				genverts[indices[selected_triangle + 2] * 3 + 1] += moveY;
-				genverts[indices[selected_triangle + 2] * 3 + 2] += moveZ;
+				genverts[indices[selected_triangle + 2] * 5] += moveX;
+				genverts[indices[selected_triangle + 2] * 5 + 1] += moveY;
+				genverts[indices[selected_triangle + 2] * 5 + 2] += moveZ;
 
 			}
 			else {
@@ -425,15 +533,33 @@ int main(int, char**)
 		glUniform4fv(selectedvertexLoc, 1, glm::value_ptr(selected_vertex));
 
 		// Render app
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		if (wireframe) {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);	// Turn on wireframe
+		}
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		for (auto it = texture_list.begin(); it != texture_list.end(); ++it) {
+			if (it->second.state) {
+				glBindTexture(GL_TEXTURE_2D, it->first); //bind the texture
+			}
+		}
+
 		glBindVertexArray(VAO);
 		//glDrawArrays(GL_TRIANGLES, 0, genverts.size());
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+		if (boxdraw) {
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(scaled_box_model));
+			glBindVertexArray(CUBEVAO);
+			//glDrawArrays(GL_TRIANGLES, 0, genverts.size());
+			glDrawElements(GL_LINES, cube_indices.size(), GL_UNSIGNED_INT, 0); //glDrawElements for indices, glDrawArrays for vertices
+			glBindVertexArray(0);
+		}
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  // Turn off wireframe before rendering gui
+
 		// Render gui
         ImGui::Render();
-
 
         SDL_GL_SwapWindow(window);
     }
@@ -441,6 +567,10 @@ int main(int, char**)
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
+
+	glDeleteVertexArrays(1, &CUBEVAO);
+	glDeleteBuffers(1, &CUBEVBO);
+	glDeleteBuffers(1, &CUBEEBO);
 
     // Cleanup
     ImGui_ImplSdlGL3_Shutdown();

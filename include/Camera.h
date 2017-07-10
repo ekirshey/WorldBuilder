@@ -12,11 +12,11 @@ class Camera {
 public:
 	Camera(GLfloat width, GLfloat height)
 		: _cameraSpeed(0.01f)
-		, _cameraPos(glm::vec3(0.0f, 0.0f, 3.0f))
+		, _cameraPos(glm::vec3(0.0f, 3.0f, 0.0f))
 		, _cameraFront(glm::vec3(0.0f, 0.0f, -1.0f))
 		, _cameraUp(glm::vec3(0.0f, 1.0f, 0.0f))
 		, _yaw(-90.0f)
-		, _pitch(0.0f)
+		, _pitch(-90.0f)
 		, _lastX(width/2.0)
 		, _lastY(height/2.0)
 		, _fov(45.0)
