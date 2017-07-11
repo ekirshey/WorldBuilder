@@ -16,7 +16,6 @@ using namespace std;
 
 #include "Shader.h"
 
-
 struct Vertex {
 	// Position
 	glm::vec3 Position;
@@ -52,7 +51,7 @@ public:
 	}
 
 	// Render the mesh
-	void Draw(const Shader& shader, int shaderprogram)
+	void Draw(const ShaderProgram& shader, int shaderprogram)
 	{
 		// Bind appropriate textures
 		GLuint diffuseNr = 1;
@@ -70,13 +69,15 @@ public:
 				ss << specularNr++; // Transfer GLuint to stream
 			number = ss.str();
 			// Now set the sampler to the correct texture unit
-			glUniform1i(shader.GetUniformlocation(shaderprogram, (name + number)), i);
+			GLint loc = shader.getUniformLocation((name + number));
+			glUniform1i(loc, i);
 			// And finally bind the texture
 			glBindTexture(GL_TEXTURE_2D, this->textures[i].id);
 		}
 
 		// Also set each mesh's shininess property to a default value (if you want you could extend this to another mesh property and possibly change this value)
-		glUniform1i(shader.GetUniformlocation(shaderprogram, "material.shininess"), 16.0f);
+		auto loc = shader.getUniformLocation("material.shininess");
+		glUniform1i(loc, 16.0f);
 
 		// Draw mesh
 		glBindVertexArray(this->VAO);

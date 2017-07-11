@@ -2,10 +2,8 @@
 // If you are new to ImGui, see examples/README.txt and documentation at the top of imgui.cpp.
 
 #include <string>
-#include <iostream>
-#include <sstream>
 #include <unordered_map>
-#include <fstream>
+#include <iostream>
 #include <imgui.h>
 #include "imgui_impl_sdl_gl3.h"
 #include <stdio.h>
@@ -19,6 +17,8 @@
 
 #include "Camera.h"
 #include "Texture.h"
+#include "Shader.h"
+#include "Ray.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
@@ -53,56 +53,6 @@ void buildPlane(GLfloat topleft_x, GLfloat topleft_y, int rows, int cols, std::v
 	}
 }
 
-std::string ReadFile(const char* file)
-{
-	// Open file
-	std::ifstream t(file);
-
-	// Read file into buffer
-	std::stringstream buffer;
-	buffer << t.rdbuf();
-
-	// Make a std::string and fill it with the contents of buffer
-	std::string fileContent = buffer.str();
-
-	return fileContent;
-}
-
-// Create shader and set the source
-GLuint CreateShader(const std::string &fileName, GLenum shaderType)
-{
-	// Read file as std::string 
-	std::string str = ReadFile(fileName.c_str());
-
-	// c_str() gives us a const char*, but we need a non-const one
-	char* src = const_cast<char*>(str.c_str());
-	int32_t size = str.length();
-
-	// Create an empty vertex shader handle
-	GLuint shaderId = glCreateShader(shaderType);
-
-	// Send the vertex shader source code to OpenGL
-	glShaderSource(shaderId, 1, &src, &size);
-
-	return shaderId;
-}
-
-// http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
-bool triangleIntersection(glm::vec3 V0, glm::vec3 V1, glm::vec3 V2, glm::vec3 O, glm::vec3 D) {
-	glm::vec3 E1 = V1 - V0;
-	glm::vec3 E2 = V2 - V0;
-	glm::vec3 T = O - V0;
-	glm::vec3 P = glm::cross(D, E2);
-	glm::vec3 Q = glm::cross(T, E1);
-
-	glm::vec3 tuv = (1 / (glm::dot(P, E1))) * glm::vec3(glm::dot(Q, E2), glm::dot(P, T), glm::dot(Q, D));
-
-	if (tuv.y >= 0 && tuv.z >= 0 && (tuv.y + tuv.z) <= 1) {
-		return true;
-	}
-
-	return false;
-}
 
 struct textureinfo {
 	std::string name;
@@ -146,43 +96,6 @@ int main(int, char**)
 
 	glEnable(GL_DEPTH_TEST);
 
-	// Build and compile our shader program
-	// Vertex shader
-	GLuint vertexShader = CreateShader(shaderpath+"model.vert", GL_VERTEX_SHADER);
-	glCompileShader(vertexShader);
-	// Check for compile time errors
-	GLint success;
-	GLchar infoLog[512];
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-	// Fragment shader
-	GLuint fragmentShader = CreateShader(shaderpath + "simple.frag", GL_FRAGMENT_SHADER);
-	glCompileShader(fragmentShader);
-	// Check for compile time errors
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-	if (!success)
-	{
-		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-	}
-	// Link shaders
-	GLuint shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-	// Check for linking errors
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-	}
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-
 	std::vector<GLfloat> cube = {
 		-0.5, -0.5, -0.5,
 		0.5, -0.5, -0.5,
@@ -203,6 +116,9 @@ int main(int, char**)
 	std::vector<GLfloat> genverts;
 	std::vector<unsigned int> indices;
 	buildPlane(-1.0f, 1.0f, 100, 100, genverts, indices);
+
+	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
+	ShaderProgram cubeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
 
 	GLuint texture = LoadTexture(mediapath + "container2.png", GL_RGBA);
 	textureinfo t;
@@ -275,11 +191,12 @@ int main(int, char**)
 
 	bool boxdraw = false;
 	bool shiftdown = false;
-	glm::vec3 boxstart;
+	Ray boxstart;
 	glm::mat4 box_model;
 	glm::mat4 scaled_box_model;
 	std::vector<int> indices_in_box;
 	GLfloat box_scale = 0.1f;
+	Ray ray;
     while (!done)
     {
         SDL_Event event;
@@ -357,6 +274,7 @@ int main(int, char**)
         {
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Mouse X: %d Mouse Y: %d", xpos, ypos);
+			ImGui::Text("Pick Ray: X: %f Y: %f Z: %f", ray.d_x(), ray.d_y(), ray.d_z());
 			if (ImGui::InputText("Add Texture", buf, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
 				textureinfo t;
 				t.name = std::string(buf);
@@ -378,61 +296,53 @@ int main(int, char**)
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glUseProgram(shaderProgram);
+		textureProgram.useProgram();
 		glm::mat4 model;
 		//transform = glm::rotate(transform, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
 		model = glm::scale(model, glm::vec3(1.0, 1.0, 1.0));
 
 		// Get matrix's uniform location and set matrix
-		GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+		GLint modelLoc = textureProgram.getUniformLocation("model");
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 		glm::mat4 view = camera.GetViewMatrix();
 		//std::cout << glm::to_string(view) << std::endl;
-		GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+		GLint viewLoc = textureProgram.getUniformLocation("view");
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
 		glm::mat4 projection = glm::perspective(camera.Zoom(), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
 		//std::cout << glm::to_string(projection) << std::endl;
-		GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+		GLint projectionLoc = textureProgram.getUniformLocation("projection");
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 		auto camerapos = glm::vec4(camera.Position(),1.0f);
 
 		if (mousedown) {
-			glm::vec3 ray_world;
-			GLfloat norm_x = (GLfloat)(2.0f *xpos) / screenWidth - 1.0f;
-			GLfloat norm_y = 1.0f - (GLfloat)(2.0f*ypos) / screenHeight;
-			//std::cout << norm_x << " " << norm_y << std::endl;
-			glm::vec4 ray_clip(norm_x, norm_y, -1.0, 1.0);
-			glm::vec4 ray_eye = glm::inverse(projection) * ray_clip;
-			ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0, 0.0);
-			ray_world = glm::inverse(view) * ray_eye;
-			ray_world = glm::normalize(ray_world);
+			float norm_x = (GLfloat)(2.0f *xpos) / screenWidth - 1.0f;
+			float norm_y = 1.0f - (GLfloat)(2.0f*ypos) / screenHeight;
+			ray.reset(norm_x, norm_y, camera.Position(), projection, view);
 
 			if (shiftdown & !boxdraw) {
-				std::cout << glm::to_string(ray_world) << " " << glm::to_string(camera.Position() + ray_world) << std::endl;
 				boxdraw = true;
-				boxstart = ray_world;
+				boxstart = ray;
 				glm::vec3 normal(0.0f, 1.0f, 0.0f);
-				GLfloat o_dot_n = glm::dot(camera.Position(), normal);
 				glm::vec3 offset = camerapos;
-				GLfloat d_dot_n = glm::dot(ray_world, normal);
-				auto planedistance = -1* (o_dot_n) / (d_dot_n);
-				box_model = glm::translate(glm::vec3(ray_world.x * planedistance +camerapos.x, 0.0f, ray_world.z*planedistance+camerapos.z));
+				float planedistance = ray.intersectWithPlane(normal, offset);
+
+				box_model = glm::translate(glm::vec3(ray.d_x() * planedistance +camerapos.x, 0.0f, ray.d_z()*planedistance+camerapos.z));
 				scaled_box_model = glm::scale(box_model, glm::vec3(box_scale, 1.0f, box_scale));
 			}
 			else if( shiftdown & boxdraw ) {
-				GLfloat movement = glm::distance(ray_world, boxstart)*2;
+				GLfloat movement = distance(ray, boxstart)*2;
 				if (movement < 0.1f) {
 					movement = 0.1f;
 				}
 				scaled_box_model = glm::scale(box_model, glm::vec3(movement, 1.0f, movement));
 			
-				GLfloat leftbound = box_model[3][0] + (movement * -0.5);
-				GLfloat rightbound = box_model[3][0] + (movement * 0.5);
-				GLfloat frontbound = box_model[3][2] + (movement * 0.5);
-				GLfloat backbound = box_model[3][2] + (movement * -0.5);
+				double leftbound = box_model[3][0] + (movement * -0.5);
+				double rightbound = box_model[3][0] + (movement * 0.5);
+				double frontbound = box_model[3][2] + (movement * 0.5);
+				double backbound = box_model[3][2] + (movement * -0.5);
 				indices_in_box.clear();
 				for (int i = 0; i < genverts.size(); i += 5) {
 					glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
@@ -446,18 +356,13 @@ int main(int, char**)
 			else {	// If not drawing a box, check the normal ray intersections
 				boxdraw = false;
 				// First check for triangle intersection
-				glm::vec3 camera3 = glm::vec3(camerapos.x, camerapos.y, camerapos.z);
 				// Check 2 triangles at a time
 				vertex_selected = false;
 				triangle_selected = false;
 				for (int i = 0; i < genverts.size(); i += 5) {
 					glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
 					double distance = glm::distance(camerapos, glm::vec4(currentpoint, 1.0f));
-					glm::vec4 ray = camerapos + glm::vec4(ray_world, 1.0f)*distance;
-					if ((ray.x <= currentpoint.x + 0.001) && (ray.x >= currentpoint.x - 0.001) &&
-						(ray.y <= currentpoint.y + 0.001) && (ray.y >= currentpoint.y - 0.001) &&
-						(ray.z <= currentpoint.z + 0.001) && (ray.z >= currentpoint.z - 0.001)
-						) {
+					if ( ray.intersectWithPoint(currentpoint, distance)){
 						vertex_selected = true;
 						selected_vertex = glm::vec4(currentpoint, 1.0f);
 						selected_index = i;
@@ -470,7 +375,7 @@ int main(int, char**)
 						glm::vec3 lt_0 = glm::vec3(genverts[indices[i] * 5], genverts[indices[i] * 5 + 1], genverts[indices[i] * 5 + 2]);
 						glm::vec3 lt_1 = glm::vec3(genverts[indices[i + 1] * 5], genverts[indices[i + 1] * 5 + 1], genverts[indices[i + 1] * 5 + 2]);
 						glm::vec3 lt_2 = glm::vec3(genverts[indices[i + 2] * 5], genverts[indices[i + 2] * 5 + 1], genverts[indices[i + 2] * 5 + 2]);
-						if (triangleIntersection(lt_0, lt_1, lt_2, camera3, ray_world)) {
+						if (ray.intersectWithTriangle(lt_0, lt_1, lt_2)) {
 							triangle_selected = true;
 							selected_triangle = i;
 							break;
@@ -479,7 +384,7 @@ int main(int, char**)
 						glm::vec3 rt_0 = glm::vec3(genverts[indices[i + 3] * 5], genverts[indices[i + 3] * 5 + 1], genverts[indices[i + 3] * 5 + 2]);
 						glm::vec3 rt_1 = glm::vec3(genverts[indices[i + 4] * 5], genverts[indices[i + 4] * 5 + 1], genverts[indices[i + 4] * 5 + 2]);
 						glm::vec3 rt_2 = glm::vec3(genverts[indices[i + 5] * 5], genverts[indices[i + 5] * 5 + 1], genverts[indices[i + 5] * 5 + 2]);
-						if (triangleIntersection(rt_0, rt_1, rt_2, camera3, ray_world)) {
+						if (ray.intersectWithTriangle(rt_0, rt_1, rt_2)) {
 							triangle_selected = true;
 							selected_triangle = i + 3;
 							break;
@@ -529,7 +434,7 @@ int main(int, char**)
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
 
-		GLint selectedvertexLoc = glGetUniformLocation(shaderProgram, "selected_vertex");
+		GLint selectedvertexLoc = textureProgram.getUniformLocation("selected_vertex");
 		glUniform4fv(selectedvertexLoc, 1, glm::value_ptr(selected_vertex));
 
 		// Render app
@@ -550,7 +455,17 @@ int main(int, char**)
 		glBindVertexArray(0);
 
 		if (boxdraw) {
+			cubeProgram.useProgram();
+
+			GLint viewLoc = cubeProgram.getUniformLocation("view");
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+			GLint projectionLoc = cubeProgram.getUniformLocation("projection");
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+			GLint modelLoc = textureProgram.getUniformLocation("model");
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(scaled_box_model));
+
 			glBindVertexArray(CUBEVAO);
 			//glDrawArrays(GL_TRIANGLES, 0, genverts.size());
 			glDrawElements(GL_LINES, cube_indices.size(), GL_UNSIGNED_INT, 0); //glDrawElements for indices, glDrawArrays for vertices
