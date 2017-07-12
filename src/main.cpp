@@ -19,40 +19,10 @@
 #include "Texture.h"
 #include "Shader.h"
 #include "Ray.h"
+#include "WorldChunk.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
-
-void buildPlane(GLfloat topleft_x, GLfloat topleft_y, int rows, int cols, std::vector<GLfloat>& vertices, std::vector<unsigned int>& indices) {
-	GLfloat colwidth = std::fabs(topleft_x) * 2 / cols;
-	GLfloat rowwidth = std::fabs(topleft_y) * 2 / rows;
-
-	for (int i = 0; i <= rows; i++) {
-		for (int j = 0; j <= cols; j++) {
-			vertices.push_back(topleft_x + (j*colwidth));
-			vertices.push_back(0.0f);;
-			vertices.push_back(topleft_y - (i*rowwidth));
-
-			vertices.push_back(topleft_x + (j*colwidth));
-			vertices.push_back(topleft_y - (i*rowwidth));
-		}
-	}
-
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
-			// Left triangle
-			indices.push_back((i*(cols+1))+j);
-			indices.push_back(((i+1)*(cols+1))+j);
-			indices.push_back(((i+1)*(cols+1))+j+1);
-
-			// Right triangle
-			indices.push_back((i*(cols+1)) + j);
-			indices.push_back((i*(cols+1)) + j + 1);
-			indices.push_back(((i + 1)*(cols+1)) + j + 1);
-		}
-	}
-}
-
 
 struct textureinfo {
 	std::string name;
@@ -113,9 +83,7 @@ int main(int, char**)
 		4,5,5,6,6,7,7,4  // Second square
 	};
 
-	std::vector<GLfloat> genverts;
-	std::vector<unsigned int> indices;
-	buildPlane(-1.0f, 1.0f, 100, 100, genverts, indices);
+	WorldChunk chunk(-1.0f, 1.0f, 2, 100, 100);
 
 	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
 	ShaderProgram cubeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
@@ -125,29 +93,6 @@ int main(int, char**)
 	t.name = "Container2";
 	t.state = true;
 	texture_list.insert({ texture, t });
-
-	GLuint VBO, VAO, EBO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
-	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-	glBindVertexArray(VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * genverts.size(), genverts.data(), GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_DYNAMIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-
-	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 
 	GLuint CUBEVBO, CUBEVAO, CUBEEBO;
 	glGenVertexArrays(1, &CUBEVAO);
@@ -194,9 +139,11 @@ int main(int, char**)
 	Ray boxstart;
 	glm::mat4 box_model;
 	glm::mat4 scaled_box_model;
-	std::vector<int> indices_in_box;
+	std::vector<GLuint> indices_in_box;
 	GLfloat box_scale = 0.1f;
 	Ray ray;
+	bool modkey_pressed = false;
+	GLfloat movement;
     while (!done)
     {
         SDL_Event event;
@@ -246,23 +193,31 @@ int main(int, char**)
 		else {
 			shiftdown = false;
 		}
+
+		modkey_pressed = false;
 		if (keys[SDL_SCANCODE_H]) {
 			moveX = -0.01f;
+			modkey_pressed = true;
 		}
 		if (keys[SDL_SCANCODE_L]) {
 			moveX = 0.01f;
+			modkey_pressed = true;
 		}
 		if (keys[SDL_SCANCODE_J]) {
 			moveY = -0.01f;
+			modkey_pressed = true;
 		}
 		if (keys[SDL_SCANCODE_K]) {
 			moveY = 0.01f;
+			modkey_pressed = true;
 		}
 		if (keys[SDL_SCANCODE_N]) {
 			moveZ = -0.01f;
+			modkey_pressed = true;
 		}
 		if (keys[SDL_SCANCODE_M]) {
 			moveZ = 0.01f;
+			modkey_pressed = true;
 		}
 
 
@@ -316,6 +271,10 @@ int main(int, char**)
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 		auto camerapos = glm::vec4(camera.Position(),1.0f);
+		
+		// Plane info
+		glm::vec3 normal(0.0f, 1.0f, 0.0f);
+		glm::vec3 offset = camerapos;
 
 		if (mousedown) {
 			float norm_x = (GLfloat)(2.0f *xpos) / screenWidth - 1.0f;
@@ -325,71 +284,26 @@ int main(int, char**)
 			if (shiftdown & !boxdraw) {
 				boxdraw = true;
 				boxstart = ray;
-				glm::vec3 normal(0.0f, 1.0f, 0.0f);
-				glm::vec3 offset = camerapos;
-				float planedistance = ray.intersectWithPlane(normal, offset);
+				float planedistance;
+				ray.intersectWithPlane(normal, offset, planedistance);
 
 				box_model = glm::translate(glm::vec3(ray.d_x() * planedistance +camerapos.x, 0.0f, ray.d_z()*planedistance+camerapos.z));
 				scaled_box_model = glm::scale(box_model, glm::vec3(box_scale, 1.0f, box_scale));
 			}
-			else if( shiftdown & boxdraw ) {
-				GLfloat movement = distance(ray, boxstart)*2;
+			else if (shiftdown & boxdraw) {
+				movement = distance(ray, boxstart) * 2;
 				if (movement < 0.1f) {
 					movement = 0.1f;
 				}
 				scaled_box_model = glm::scale(box_model, glm::vec3(movement, 1.0f, movement));
-			
-				double leftbound = box_model[3][0] + (movement * -0.5);
-				double rightbound = box_model[3][0] + (movement * 0.5);
-				double frontbound = box_model[3][2] + (movement * 0.5);
-				double backbound = box_model[3][2] + (movement * -0.5);
-				indices_in_box.clear();
-				for (int i = 0; i < genverts.size(); i += 5) {
-					glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
-					if ((currentpoint.x <= rightbound) && (currentpoint.x >= leftbound) &&
-						(currentpoint.z <= frontbound) && (currentpoint.z >= backbound) 
-						) {
-						indices_in_box.push_back(i);
-					}
-				}
 			}
 			else {	// If not drawing a box, check the normal ray intersections
 				boxdraw = false;
-				// First check for triangle intersection
-				// Check 2 triangles at a time
-				vertex_selected = false;
-				triangle_selected = false;
-				for (int i = 0; i < genverts.size(); i += 5) {
-					glm::vec3 currentpoint = glm::vec3(genverts[i], genverts[i + 1], genverts[i + 2]);
-					double distance = glm::distance(camerapos, glm::vec4(currentpoint, 1.0f));
-					if ( ray.intersectWithPoint(currentpoint, distance)){
-						vertex_selected = true;
-						selected_vertex = glm::vec4(currentpoint, 1.0f);
-						selected_index = i;
-						break;
-					}
-				}
+
+				vertex_selected = chunk.vertexIntersectsWithRay(ray, selected_index);
 
 				if (!vertex_selected) {
-					for (int i = 0; i < indices.size(); i += 6) {
-						glm::vec3 lt_0 = glm::vec3(genverts[indices[i] * 5], genverts[indices[i] * 5 + 1], genverts[indices[i] * 5 + 2]);
-						glm::vec3 lt_1 = glm::vec3(genverts[indices[i + 1] * 5], genverts[indices[i + 1] * 5 + 1], genverts[indices[i + 1] * 5 + 2]);
-						glm::vec3 lt_2 = glm::vec3(genverts[indices[i + 2] * 5], genverts[indices[i + 2] * 5 + 1], genverts[indices[i + 2] * 5 + 2]);
-						if (ray.intersectWithTriangle(lt_0, lt_1, lt_2)) {
-							triangle_selected = true;
-							selected_triangle = i;
-							break;
-						}
-						
-						glm::vec3 rt_0 = glm::vec3(genverts[indices[i + 3] * 5], genverts[indices[i + 3] * 5 + 1], genverts[indices[i + 3] * 5 + 2]);
-						glm::vec3 rt_1 = glm::vec3(genverts[indices[i + 4] * 5], genverts[indices[i + 4] * 5 + 1], genverts[indices[i + 4] * 5 + 2]);
-						glm::vec3 rt_2 = glm::vec3(genverts[indices[i + 5] * 5], genverts[indices[i + 5] * 5 + 1], genverts[indices[i + 5] * 5 + 2]);
-						if (ray.intersectWithTriangle(rt_0, rt_1, rt_2)) {
-							triangle_selected = true;
-							selected_triangle = i + 3;
-							break;
-						}
-					}
+					triangle_selected = chunk.faceIntersectsWithRay(ray, selected_triangle);
 				}
 			}
 
@@ -397,41 +311,42 @@ int main(int, char**)
 
 		// adjust selected vertex
 		if (vertex_selected | triangle_selected | boxdraw) {
+			glm::vec3 change(moveX, moveY, moveZ);
 			if (boxdraw) {
 				for (int i = 0; i < indices_in_box.size(); i++) {
-					genverts[indices_in_box[i]] += moveX;
-					genverts[indices_in_box[i] + 1] += moveY;
-					genverts[indices_in_box[i] + 2] += moveZ;
+					chunk.modifyVertex(indices_in_box[i], change);
 				}
 			}
 			else if (triangle_selected) {
-				genverts[indices[selected_triangle] * 5] += moveX;
-				genverts[indices[selected_triangle] * 5 + 1] += moveY;
-				genverts[indices[selected_triangle] * 5 + 2] += moveZ;
-
-				genverts[indices[selected_triangle + 1] * 5] += moveX;
-				genverts[indices[selected_triangle + 1] * 5 + 1] += moveY;
-				genverts[indices[selected_triangle + 1] * 5 + 2] += moveZ;
-
-				genverts[indices[selected_triangle + 2] * 5] += moveX;
-				genverts[indices[selected_triangle + 2] * 5 + 1] += moveY;
-				genverts[indices[selected_triangle + 2] * 5 + 2] += moveZ;
-
+				chunk.modifyFace(selected_triangle, change);
 			}
 			else {
-				genverts[selected_index] += moveX;
-				genverts[selected_index + 1] += moveY;
-				genverts[selected_index + 2] += moveZ;
+				chunk.modifyVertex(selected_index, change);
 
+#ifdef REFACTOR
 				selected_vertex.x = genverts[selected_index];
 				selected_vertex.y = genverts[selected_index + 1];
 				selected_vertex.z = genverts[selected_index + 2];
+#endif
 			}
 
-			// Modify the vertex data
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * genverts.size(), genverts.data());
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
+		}
+
+		if (modkey_pressed && boxdraw) {
+
+			double leftbound = box_model[3][0] + (movement * -0.5);
+			double rightbound = box_model[3][0] + (movement * 0.5);
+			double topbound = box_model[3][1] + (movement * 0.5);
+			double bottombound = box_model[3][1] + (movement * -0.5);
+			double frontbound = box_model[3][2] + (movement * 0.5);
+			double backbound = box_model[3][2] + (movement * -0.5);
+			std::cout << "hmmm " << modkey_pressed << std::endl;
+			indices_in_box = chunk.indicesInCube(leftbound,
+				rightbound,
+				topbound,
+				bottombound,
+				frontbound,
+				bottombound);
 		}
 
 		GLint selectedvertexLoc = textureProgram.getUniformLocation("selected_vertex");
@@ -449,10 +364,7 @@ int main(int, char**)
 			}
 		}
 
-		glBindVertexArray(VAO);
-		//glDrawArrays(GL_TRIANGLES, 0, genverts.size());
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-		glBindVertexArray(0);
+		chunk.draw();
 
 		if (boxdraw) {
 			cubeProgram.useProgram();
@@ -478,10 +390,6 @@ int main(int, char**)
 
         SDL_GL_SwapWindow(window);
     }
-
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
 
 	glDeleteVertexArrays(1, &CUBEVAO);
 	glDeleteBuffers(1, &CUBEVBO);

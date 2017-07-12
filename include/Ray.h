@@ -21,9 +21,12 @@ class Ray {
 		void reset(float norm_x, float norm_y, glm::vec3 origin, glm::mat4 proj, glm::mat4 view);
 
 		// Returns < 0 if no intersection, otherwise it returns the intersection distance
-		float intersectWithPlane(glm::vec3 plane_normal, glm::vec3 plane_offset);
-		bool intersectWithPoint(glm::vec3 point, float ray_magnitude);
-		bool intersectWithTriangle(glm::vec3 V0, glm::vec3 V1, glm::vec3 V2);
+		bool intersectWithPlane(const glm::vec3& plane_normal, const glm::vec3& plane_offset, float& ray_magnitude) const;
+		bool intersectWithPoint(const glm::vec3& point, float ray_magnitude) const;
+		bool intersectWithPoint(const glm::vec3& rayAtPoint, const glm::vec3& point) const;
+		bool intersectWithTriangle(const glm::vec3& V0, const glm::vec3& V1, const glm::vec3& V2) const;
+
+		glm::vec3 atPoint(float t) const;
 
 		// direction getters
 		glm::vec3 direction() const { return _direction; }
