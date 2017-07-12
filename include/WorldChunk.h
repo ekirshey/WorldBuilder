@@ -21,6 +21,7 @@ class WorldChunk {
 		// probably handle this better
 		void modifyVertex(int vertex, const glm::vec3& change);
 		void modifyFace(int face, const glm::vec3& change);
+		void reloadVertexData();
 
 		void draw();
 	private:

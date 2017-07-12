@@ -108,6 +108,22 @@ bool WorldChunk::vertexIntersectsWithRay(const Ray& ray, int& vertex_index) {
 bool WorldChunk::faceIntersectsWithRay(const Ray& ray, int& face_index)
 {
 	bool ret = false;
+	float intersect_point = 0;
+
+	// Check if it even intersects with the plane
+	if (ray.intersectWithPlane(_normal, _offset, intersect_point)) {
+		auto ray_pos = ray.atPoint(intersect_point);
+
+		if (ray_pos.x > _xmax ||
+			ray_pos.x < _xmin ||
+			ray_pos.z > _zmax ||
+			ray_pos.z < _zmin
+			)
+		{
+			return false;
+		}
+	}
+
 	for (int i = 0; i < _indices.size(); i += 6) {
 		glm::vec3 lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
 		glm::vec3 lt_1 = glm::vec3(_vertices[_indices[i + 1] * 5], _vertices[_indices[i + 1] * 5 + 1], _vertices[_indices[i + 1] * 5 + 2]);
@@ -141,7 +157,7 @@ std::vector<GLuint> WorldChunk::indicesInCube(GLfloat leftbound,
 	for (int i = 0; i < _vertices.size(); i += 5) {
 		glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
 		if ((currentpoint.x <= rightbound) && (currentpoint.x >= leftbound) &&
-			(currentpoint.y <= topbound) && (currentpoint.y >= bottombound) &&
+			//(currentpoint.y <= topbound) && (currentpoint.y >= bottombound) &&
 			(currentpoint.z <= frontbound) && (currentpoint.z >= backbound) 
 			) 
 		{
@@ -158,10 +174,7 @@ void WorldChunk::modifyVertex(int vertex, const glm::vec3& change)
 	_vertices[vertex + 1] += change.y;
 	_vertices[vertex + 2] += change.z;
 
-	// Modify the vertex data
-	glBindBuffer(GL_ARRAY_BUFFER, _VBO);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * _vertices.size(), _vertices.data());
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 }
 
 void WorldChunk::modifyFace(int face, const glm::vec3 & change)
@@ -178,10 +191,14 @@ void WorldChunk::modifyFace(int face, const glm::vec3 & change)
 	_vertices[_indices[face + 2] * 5 + 1] += change.y;
 	_vertices[_indices[face + 2] * 5 + 2] += change.z;
 
+}
+
+void WorldChunk::reloadVertexData()
+{
 	// Modify the vertex data
 	glBindBuffer(GL_ARRAY_BUFFER, _VBO);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * _vertices.size(), _vertices.data());
-	glBindBuffer(GL_ARRAY_BUFFER, 0);;
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 void WorldChunk::draw()

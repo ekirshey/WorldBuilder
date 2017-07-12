@@ -285,6 +285,7 @@ int main(int, char**)
 				boxdraw = true;
 				boxstart = ray;
 				float planedistance;
+				// Get this in terms of worldchunk
 				ray.intersectWithPlane(normal, offset, planedistance);
 
 				box_model = glm::translate(glm::vec3(ray.d_x() * planedistance +camerapos.x, 0.0f, ray.d_z()*planedistance+camerapos.z));
@@ -297,7 +298,7 @@ int main(int, char**)
 				}
 				scaled_box_model = glm::scale(box_model, glm::vec3(movement, 1.0f, movement));
 			}
-			else {	// If not drawing a box, check the normal ray intersections
+			else {	// If not drawing a box, check the ray intersections
 				boxdraw = false;
 
 				vertex_selected = chunk.vertexIntersectsWithRay(ray, selected_index);
@@ -307,6 +308,22 @@ int main(int, char**)
 				}
 			}
 
+		}
+
+		if (modkey_pressed && boxdraw) {
+
+			double leftbound = box_model[3][0] + (movement * -0.5);
+			double rightbound = box_model[3][0] + (movement * 0.5);
+			double topbound = box_model[3][1] + (movement * 0.5);
+			double bottombound = box_model[3][1] + (movement * -0.5);
+			double frontbound = box_model[3][2] + (movement * 0.5);
+			double backbound = box_model[3][2] + (movement * -0.5);
+			indices_in_box = chunk.indicesInCube(leftbound,
+				rightbound,
+				topbound,
+				bottombound,
+				frontbound,
+				backbound);
 		}
 
 		// adjust selected vertex
@@ -330,23 +347,8 @@ int main(int, char**)
 #endif
 			}
 
-		}
+			chunk.reloadVertexData();
 
-		if (modkey_pressed && boxdraw) {
-
-			double leftbound = box_model[3][0] + (movement * -0.5);
-			double rightbound = box_model[3][0] + (movement * 0.5);
-			double topbound = box_model[3][1] + (movement * 0.5);
-			double bottombound = box_model[3][1] + (movement * -0.5);
-			double frontbound = box_model[3][2] + (movement * 0.5);
-			double backbound = box_model[3][2] + (movement * -0.5);
-			std::cout << "hmmm " << modkey_pressed << std::endl;
-			indices_in_box = chunk.indicesInCube(leftbound,
-				rightbound,
-				topbound,
-				bottombound,
-				frontbound,
-				bottombound);
 		}
 
 		GLint selectedvertexLoc = textureProgram.getUniformLocation("selected_vertex");
