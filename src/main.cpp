@@ -20,6 +20,7 @@
 #include "Shader.h"
 #include "Ray.h"
 #include "WorldChunk.h"
+#include "ChunkModel.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
@@ -83,8 +84,19 @@ int main(int, char**)
 		4,5,5,6,6,7,7,4  // Second square
 	};
 
-	WorldChunk chunk(-1.0f, 1.0f, 2, 100, 100);
+	// I need to reserve the space or else dynamic resizing changes the location of the vector elements
+	chunk::Model models[25];
+	std::vector<WorldChunk> chunks;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++) {
+			chunk::buildChunkModel(&models[j + 5*i], glm::vec3(-1.0f +(i*2), 0.0f, 1.0f+(j*2)), 2.0f, 100, 100);
+			chunks.push_back(WorldChunk(&models[j + 5 * i], glm::vec3(-1.0f+(i*2), 0.0f, 1.0f+(j*2)), 2));
+		}
+	}
 
+	//std::vector<WorldChunk> chunks;
+	//chunks.push_back(WorldChunk(-3.0f, 1.0f, 2, 100, 100));
+	
 	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
 	ShaderProgram cubeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
 
@@ -301,10 +313,10 @@ int main(int, char**)
 			else {	// If not drawing a box, check the ray intersections
 				boxdraw = false;
 
-				vertex_selected = chunk.vertexIntersectsWithRay(ray, selected_index);
+				vertex_selected = chunks[0].vertexIntersectsWithRay(ray, selected_index);
 
 				if (!vertex_selected) {
-					triangle_selected = chunk.faceIntersectsWithRay(ray, selected_triangle);
+					triangle_selected = chunks[0].faceIntersectsWithRay(ray, selected_triangle);
 				}
 			}
 
@@ -318,7 +330,7 @@ int main(int, char**)
 			double bottombound = box_model[3][1] + (movement * -0.5);
 			double frontbound = box_model[3][2] + (movement * 0.5);
 			double backbound = box_model[3][2] + (movement * -0.5);
-			indices_in_box = chunk.indicesInCube(leftbound,
+			indices_in_box = chunks[0].indicesInCube(leftbound,
 				rightbound,
 				topbound,
 				bottombound,
@@ -331,14 +343,14 @@ int main(int, char**)
 			glm::vec3 change(moveX, moveY, moveZ);
 			if (boxdraw) {
 				for (int i = 0; i < indices_in_box.size(); i++) {
-					chunk.modifyVertex(indices_in_box[i], change);
+					chunks[0].modifyVertex(indices_in_box[i], change);
 				}
 			}
 			else if (triangle_selected) {
-				chunk.modifyFace(selected_triangle, change);
+				chunks[0].modifyFace(selected_triangle, change);
 			}
 			else {
-				chunk.modifyVertex(selected_index, change);
+				chunks[0].modifyVertex(selected_index, change);
 
 #ifdef REFACTOR
 				selected_vertex.x = genverts[selected_index];
@@ -347,7 +359,7 @@ int main(int, char**)
 #endif
 			}
 
-			chunk.reloadVertexData();
+			chunks[0].reloadVertexData();
 
 		}
 
@@ -366,7 +378,9 @@ int main(int, char**)
 			}
 		}
 
-		chunk.draw();
+		for (auto& c : chunks) {
+			c.draw();
+		}
 
 		if (boxdraw) {
 			cubeProgram.useProgram();
@@ -392,6 +406,10 @@ int main(int, char**)
 
         SDL_GL_SwapWindow(window);
     }
+
+	for (int i = 0; i < 25; i++) {
+		chunk::freeChunkModel(&models[i]);
+	}
 
 	glDeleteVertexArrays(1, &CUBEVAO);
 	glDeleteBuffers(1, &CUBEVBO);

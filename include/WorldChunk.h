@@ -2,10 +2,11 @@
 #include <vector>
 #include <GL/glew.h>
 #include "Ray.h"
+#include "ChunkModel.h"
 
 class WorldChunk {
 	public:
-		WorldChunk(GLfloat x, GLfloat z, GLfloat width, int rows, int cols);
+		WorldChunk(chunk::Model* m, glm::vec3 position, GLfloat width);
 		~WorldChunk();
 
 		bool vertexIntersectsWithRay(const Ray& ray, int& vertex_index);
@@ -24,22 +25,19 @@ class WorldChunk {
 		void reloadVertexData();
 
 		void draw();
+
 	private:
-		void _buildPlaneGeometry(GLfloat x, GLfloat z, GLfloat width, int rows, int cols);
-		void _bindOpenGLBuffers();
+		// Model info
+		chunk::Model* _model;
 
 		// Geometry
-		std::vector<GLfloat> _vertices;
-		std::vector<GLuint> _indices;
 		glm::vec3 _normal;
 		glm::vec3 _offset;		// offset from the world origin (0,0,0)
+		glm::vec3 _position;
 		GLfloat _xmax;
 		GLfloat _xmin;
 		GLfloat _zmax;
 		GLfloat _zmin;
 
-		// Opengl buffers
-		GLuint _VAO;
-		GLuint _VBO;
-		GLuint _EBO;
+
 };
