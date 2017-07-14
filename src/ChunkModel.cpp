@@ -1,46 +1,61 @@
 #include "ChunkModel.h"
 
 namespace chunk {
-	void buildChunkModel(Model* m, glm::vec3 position, GLfloat width, int rows, int cols) {
+	Model::Model( glm::vec3 position, GLfloat width, int rows, int cols) {
 		GLfloat colwidth = width / cols;
 		GLfloat rowwidth = width / rows;
 
 		for (int i = 0; i <= rows; i++) {
 			for (int j = 0; j <= cols; j++) {
-				m->vertices.push_back(position.x + (j*colwidth));
-				m->vertices.push_back(0.0f);;
-				m->vertices.push_back(position.z - (i*rowwidth));
+				_vertices.push_back(position.x + (j*colwidth));
+				_vertices.push_back(0.0f);;
+				_vertices.push_back(position.z - (i*rowwidth));
 
-				m->vertices.push_back(position.x + (j*colwidth));
-				m->vertices.push_back(position.z - (i*rowwidth));
+				_vertices.push_back(position.x + (j*colwidth));
+				_vertices.push_back(position.z - (i*rowwidth));
 			}
 		}
 
 		for (int i = 0; i < rows; i++) {
 			for (int j = 0; j < cols; j++) {
 				// Left triangle
-				m->indices.push_back((i*(cols + 1)) + j);
-				m->indices.push_back(((i + 1)*(cols + 1)) + j);
-				m->indices.push_back(((i + 1)*(cols + 1)) + j + 1);
+				_indices.push_back((i*(cols + 1)) + j);
+				_indices.push_back(((i + 1)*(cols + 1)) + j);
+				_indices.push_back(((i + 1)*(cols + 1)) + j + 1);
 
 				// Right triangle
-				m->indices.push_back((i*(cols + 1)) + j);
-				m->indices.push_back((i*(cols + 1)) + j + 1);
-				m->indices.push_back(((i + 1)*(cols + 1)) + j + 1);
+				_indices.push_back((i*(cols + 1)) + j);
+				_indices.push_back((i*(cols + 1)) + j + 1);
+				_indices.push_back(((i + 1)*(cols + 1)) + j + 1);
 			}
 		}
+	}
 
-		glGenVertexArrays(1, &m->VAO);
-		glGenBuffers(1, &m->VBO);
-		glGenBuffers(1, &m->EBO);
+	Model::Model(const Model & m)
+	{
+		_vertices = m._vertices;
+		_indices = m._indices;
+		_bindOpenGLBuffers();
+	}
+
+	Model::~Model() {
+		glDeleteVertexArrays(1, &_VAO);
+		glDeleteBuffers(1, &_VBO);
+		glDeleteBuffers(1, &_EBO);
+	}
+
+	void Model::_bindOpenGLBuffers() {
+		glGenVertexArrays(1, &_VAO);
+		glGenBuffers(1, &_VBO);
+		glGenBuffers(1, &_EBO);
 		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-		glBindVertexArray(m->VAO);
+		glBindVertexArray(_VAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, m->VBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * m->vertices.size(), m->vertices.data(), GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * _vertices.size(), _vertices.data(), GL_DYNAMIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m->EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * m->indices.size(), m->indices.data(), GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * _indices.size(), _indices.data(), GL_DYNAMIC_DRAW);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 		glEnableVertexAttribArray(0);
@@ -51,23 +66,96 @@ namespace chunk {
 		glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 	}
 
-	void freeChunkModel(Model* m) {
-		glDeleteVertexArrays(1, &m->VAO);
-		glDeleteBuffers(1, &m->VBO);
-		glDeleteBuffers(1, &m->EBO);
+	bool Model::vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index)
+	{
+		auto ray_pos = ray.atPoint(ray_mag);
+		for (int i = 0; i < _vertices.size(); i += 5) {
+			glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
+			if (ray.intersectWithPoint(ray_pos, currentpoint)) {
+				vertex_index = i;
+				return true;
+			}
+		}
+		return false;
 	}
 
-	void reloadVertexData(Model* m) {
+	bool Model::faceIntersectsWithRay(const Ray & ray, unsigned int& face_index)
+	{
+		bool ret = false;
+		for (int i = 0; i < _indices.size(); i += 6) {
+			glm::vec3 lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
+			glm::vec3 lt_1 = glm::vec3(_vertices[_indices[i + 1] * 5], _vertices[_indices[i + 1] * 5 + 1], _vertices[_indices[i + 1] * 5 + 2]);
+			glm::vec3 lt_2 = glm::vec3(_vertices[_indices[i + 2] * 5], _vertices[_indices[i + 2] * 5 + 1], _vertices[_indices[i + 2] * 5 + 2]);
+			if (ray.intersectWithTriangle(lt_0, lt_1, lt_2)) {
+				ret = true;
+				face_index = i;
+				break;
+			}
+
+			glm::vec3 rt_0 = glm::vec3(_vertices[_indices[i + 3] * 5], _vertices[_indices[i + 3] * 5 + 1], _vertices[_indices[i + 3] * 5 + 2]);
+			glm::vec3 rt_1 = glm::vec3(_vertices[_indices[i + 4] * 5], _vertices[_indices[i + 4] * 5 + 1], _vertices[_indices[i + 4] * 5 + 2]);
+			glm::vec3 rt_2 = glm::vec3(_vertices[_indices[i + 5] * 5], _vertices[_indices[i + 5] * 5 + 1], _vertices[_indices[i + 5] * 5 + 2]);
+			if (ray.intersectWithTriangle(rt_0, rt_1, rt_2)) {
+				ret = true;
+				face_index = i + 3;
+				break;
+			}
+		}
+		return ret;
+	}
+
+	std::vector<GLuint> Model::indicesInCube(GLfloat leftbound, GLfloat rightbound, GLfloat topbound, GLfloat bottombound, GLfloat frontbound, GLfloat backbound)
+	{
+		std::vector<GLuint> _indices_in_box;
+		for (int i = 0; i < _vertices.size(); i += 5) {
+			glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
+			if ((currentpoint.x <= rightbound) && (currentpoint.x >= leftbound) &&
+				//(currentpoint.y <= topbound) && (currentpoint.y >= bottombound) &&
+				(currentpoint.z <= frontbound) && (currentpoint.z >= backbound)
+				)
+			{
+				_indices_in_box.push_back(i);
+			}
+		}
+
+		return _indices_in_box;
+	}
+
+	void Model::modifyVertex( int vertex, const glm::vec3& change)
+	{
+		_vertices[vertex] += change.x;
+		_vertices[vertex + 1] += change.y;
+		_vertices[vertex + 2] += change.z;
+
+	}
+
+	void Model::modifyFace( int face, const glm::vec3 & change)
+	{
+		_vertices[_indices[face] * 5] += change.x;
+		_vertices[_indices[face] * 5 + 1] += change.y;
+		_vertices[_indices[face] * 5 + 2] += change.z;
+
+		_vertices[_indices[face + 1] * 5] += change.x;
+		_vertices[_indices[face + 1] * 5 + 1] += change.y;
+		_vertices[_indices[face + 1] * 5 + 2] += change.z;
+
+		_vertices[_indices[face + 2] * 5] += change.x;
+		_vertices[_indices[face + 2] * 5 + 1] += change.y;
+		_vertices[_indices[face + 2] * 5 + 2] += change.z;
+
+	}
+
+	void Model::reloadVertexData() {
 		// Modify the vertex data
-		glBindBuffer(GL_ARRAY_BUFFER, m->VBO);
-		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * m->vertices.size(), m->vertices.data());
+		glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * _vertices.size(), _vertices.data());
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	void draw(Model* m)
+	void Model::draw()
 	{
-		glBindVertexArray(m->VAO);
-		glDrawElements(GL_TRIANGLES, m->indices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(_VAO);
+		glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 }

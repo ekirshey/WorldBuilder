@@ -19,8 +19,7 @@
 #include "Texture.h"
 #include "Shader.h"
 #include "Ray.h"
-#include "WorldChunk.h"
-#include "ChunkModel.h"
+#include "World.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
@@ -84,19 +83,11 @@ int main(int, char**)
 		4,5,5,6,6,7,7,4  // Second square
 	};
 
-	// I need to reserve the space or else dynamic resizing changes the location of the vector elements
-	chunk::Model models[25];
-	std::vector<WorldChunk> chunks;
+	World world;
 	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < 5; j++) {
-			chunk::buildChunkModel(&models[j + 5*i], glm::vec3(-1.0f +(i*2), 0.0f, 1.0f+(j*2)), 2.0f, 100, 100);
-			chunks.push_back(WorldChunk(&models[j + 5 * i], glm::vec3(-1.0f+(i*2), 0.0f, 1.0f+(j*2)), 2));
-		}
+		world.AddChunk(glm::vec3(-1.0f + (i), 0.0f, 1.0f), 2.0f, 100, 100);
 	}
 
-	//std::vector<WorldChunk> chunks;
-	//chunks.push_back(WorldChunk(-3.0f, 1.0f, 2, 100, 100));
-	
 	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
 	ShaderProgram cubeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
 
@@ -264,23 +255,9 @@ int main(int, char**)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		textureProgram.useProgram();
-		glm::mat4 model;
-		//transform = glm::rotate(transform, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
-		model = glm::scale(model, glm::vec3(1.0, 1.0, 1.0));
-
-		// Get matrix's uniform location and set matrix
-		GLint modelLoc = textureProgram.getUniformLocation("model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 		glm::mat4 view = camera.GetViewMatrix();
-		//std::cout << glm::to_string(view) << std::endl;
-		GLint viewLoc = textureProgram.getUniformLocation("view");
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
 		glm::mat4 projection = glm::perspective(camera.Zoom(), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
-		//std::cout << glm::to_string(projection) << std::endl;
-		GLint projectionLoc = textureProgram.getUniformLocation("projection");
-		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 		auto camerapos = glm::vec4(camera.Position(),1.0f);
 		
@@ -312,12 +289,14 @@ int main(int, char**)
 			}
 			else {	// If not drawing a box, check the ray intersections
 				boxdraw = false;
-
+				
+/*
 				vertex_selected = chunks[0].vertexIntersectsWithRay(ray, selected_index);
 
 				if (!vertex_selected) {
 					triangle_selected = chunks[0].faceIntersectsWithRay(ray, selected_triangle);
 				}
+*/
 			}
 
 		}
@@ -330,12 +309,14 @@ int main(int, char**)
 			double bottombound = box_model[3][1] + (movement * -0.5);
 			double frontbound = box_model[3][2] + (movement * 0.5);
 			double backbound = box_model[3][2] + (movement * -0.5);
+			/*
 			indices_in_box = chunks[0].indicesInCube(leftbound,
 				rightbound,
 				topbound,
 				bottombound,
 				frontbound,
 				backbound);
+			*/
 		}
 
 		// adjust selected vertex
@@ -343,14 +324,14 @@ int main(int, char**)
 			glm::vec3 change(moveX, moveY, moveZ);
 			if (boxdraw) {
 				for (int i = 0; i < indices_in_box.size(); i++) {
-					chunks[0].modifyVertex(indices_in_box[i], change);
+					//chunks[0].modifyVertex(indices_in_box[i], change);
 				}
 			}
 			else if (triangle_selected) {
-				chunks[0].modifyFace(selected_triangle, change);
+				//chunks[0].modifyFace(selected_triangle, change);
 			}
 			else {
-				chunks[0].modifyVertex(selected_index, change);
+				//chunks[0].modifyVertex(selected_index, change);
 
 #ifdef REFACTOR
 				selected_vertex.x = genverts[selected_index];
@@ -359,7 +340,7 @@ int main(int, char**)
 #endif
 			}
 
-			chunks[0].reloadVertexData();
+			//chunks[0].reloadVertexData();
 
 		}
 
@@ -377,11 +358,12 @@ int main(int, char**)
 				glBindTexture(GL_TEXTURE_2D, it->first); //bind the texture
 			}
 		}
-
+/*
 		for (auto& c : chunks) {
 			c.draw();
 		}
-
+*/
+		world.DrawWorld(textureProgram, view, projection);
 		if (boxdraw) {
 			cubeProgram.useProgram();
 
@@ -406,10 +388,6 @@ int main(int, char**)
 
         SDL_GL_SwapWindow(window);
     }
-
-	for (int i = 0; i < 25; i++) {
-		chunk::freeChunkModel(&models[i]);
-	}
 
 	glDeleteVertexArrays(1, &CUBEVAO);
 	glDeleteBuffers(1, &CUBEVBO);

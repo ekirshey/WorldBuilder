@@ -2,21 +2,39 @@
 #include <vector>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include "Ray.h"
 
 namespace chunk {
-	struct Model {
+	class Model {
+	public:
+		Model(glm::vec3 position, GLfloat width, int rows, int cols);
+		Model(const Model& m);
+		~Model();
+
+		bool vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index);
+		bool faceIntersectsWithRay(const Ray& ray, unsigned int& vertex_index);
+		std::vector<GLuint> indicesInCube(GLfloat leftbound,
+										  GLfloat rightbound,
+										  GLfloat topbound,
+										  GLfloat bottombound,
+										  GLfloat frontbound,
+										  GLfloat backbound);
+
+		void modifyVertex( int vertex, const glm::vec3& change);
+		void modifyFace( int face, const glm::vec3& change);
+		void reloadVertexData();
+
+		void draw();
+	private:
+		void _bindOpenGLBuffers();
 		// Geometry info
-		std::vector<GLfloat> vertices;
-		std::vector<GLuint> indices;
+		std::vector<GLfloat> _vertices;
+		std::vector<GLuint> _indices;
 
 		// Opengl buffers
-		GLuint VAO;
-		GLuint VBO;
-		GLuint EBO;
+		GLuint _VAO;
+		GLuint _VBO;
+		GLuint _EBO;
 	};
 
-	void buildChunkModel(Model* m, glm::vec3 position, GLfloat width, int rows, int cols);
-	void freeChunkModel(Model* m);
-	void reloadVertexData(Model* m);
-	void draw(Model* m);
 }
