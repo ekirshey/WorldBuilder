@@ -85,7 +85,9 @@ int main(int, char**)
 
 	World world;
 	for (int i = 0; i < 5; i++) {
-		world.AddChunk(glm::vec3(-1.0f + (i), 0.0f, 1.0f), 2.0f, 100, 100);
+		for (int j = 0; j < 5; j++) {
+			world.AddChunk(glm::vec3(-1.0f + (2*i), 0.0f, 1.0f + (2*j)), 2.0f, 100, 100);
+		}
 	}
 
 	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
@@ -127,8 +129,8 @@ int main(int, char**)
 	glm::vec4 selected_vertex;
 	bool vertex_selected = false;
 	bool triangle_selected = false;
-	int selected_index;
-	int selected_triangle;
+	unsigned int selected_index;
+	unsigned int selected_triangle;
 	GLfloat moveX = 0.0;
 	GLfloat moveY = 0.0;
 	GLfloat moveZ = 0.0;
@@ -147,6 +149,7 @@ int main(int, char**)
 	Ray ray;
 	bool modkey_pressed = false;
 	GLfloat movement;
+	int chunkid;
     while (!done)
     {
         SDL_Event event;
@@ -289,14 +292,14 @@ int main(int, char**)
 			}
 			else {	// If not drawing a box, check the ray intersections
 				boxdraw = false;
-				
-/*
-				vertex_selected = chunks[0].vertexIntersectsWithRay(ray, selected_index);
+				float intersect_point;
+				triangle_selected = false;
+				chunkid = world.GetSelectedChunk(ray, intersect_point);
+				vertex_selected = world.ChunkVertexIntersectsWithRay(chunkid, ray, intersect_point, selected_index);
 
 				if (!vertex_selected) {
-					triangle_selected = chunks[0].faceIntersectsWithRay(ray, selected_triangle);
+					triangle_selected = world.ChunkFaceIntersectsWithRay(chunkid, ray, selected_triangle);
 				}
-*/
 			}
 
 		}
@@ -328,10 +331,10 @@ int main(int, char**)
 				}
 			}
 			else if (triangle_selected) {
-				//chunks[0].modifyFace(selected_triangle, change);
+				world.ModifyChunkFace(chunkid, selected_triangle, change);
 			}
 			else {
-				//chunks[0].modifyVertex(selected_index, change);
+				world.ModifyChunkVertex(chunkid, selected_index, change);
 
 #ifdef REFACTOR
 				selected_vertex.x = genverts[selected_index];
@@ -340,12 +343,12 @@ int main(int, char**)
 #endif
 			}
 
-			//chunks[0].reloadVertexData();
+			world.ReloadChunk(chunkid);
 
 		}
 
-		GLint selectedvertexLoc = textureProgram.getUniformLocation("selected_vertex");
-		glUniform4fv(selectedvertexLoc, 1, glm::value_ptr(selected_vertex));
+		//GLint selectedvertexLoc = textureProgram.getUniformLocation("selected_vertex");
+		//glUniform4fv(selectedvertexLoc, 1, glm::value_ptr(selected_vertex));
 
 		// Render app
 		if (wireframe) {
@@ -358,11 +361,7 @@ int main(int, char**)
 				glBindTexture(GL_TEXTURE_2D, it->first); //bind the texture
 			}
 		}
-/*
-		for (auto& c : chunks) {
-			c.draw();
-		}
-*/
+
 		world.DrawWorld(textureProgram, view, projection);
 		if (boxdraw) {
 			cubeProgram.useProgram();

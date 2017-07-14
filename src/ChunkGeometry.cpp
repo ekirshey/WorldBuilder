@@ -54,7 +54,7 @@ namespace chunk {
 
 	void Geometry::buildModelMatrix(glm::mat4 & model)
 	{
-		model = glm::translate(_position);
+		//model = glm::translate(_position);
 	}
 
 }

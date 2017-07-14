@@ -12,7 +12,7 @@ namespace chunk {
 		~Model();
 
 		bool vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index);
-		bool faceIntersectsWithRay(const Ray& ray, unsigned int& vertex_index);
+		bool faceIntersectsWithRay(const Ray& ray, unsigned int& face_index);
 		std::vector<GLuint> indicesInCube(GLfloat leftbound,
 										  GLfloat rightbound,
 										  GLfloat topbound,

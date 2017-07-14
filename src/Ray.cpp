@@ -1,5 +1,10 @@
 #include "Ray.h"
 
+//temp
+#include <iostream>
+
+#include <glm/ext.hpp>
+
 Ray::Ray() {
 
 }
@@ -86,6 +91,7 @@ bool Ray::intersectWithPoint(const glm::vec3& rayAtPoint, const glm::vec3& point
 		(rayAtPoint.z <= point.z + 0.001) && (rayAtPoint.z >= point.z - 0.001)
 		)
 	{
+		std::cout << glm::to_string(rayAtPoint) << std::endl;
 		return true;
 	}
 	else {
