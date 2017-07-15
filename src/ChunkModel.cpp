@@ -1,18 +1,18 @@
 #include "ChunkModel.h"
 
 namespace chunk {
-	Model::Model( glm::vec3 position, GLfloat width, int rows, int cols) {
+	Model::Model(glm::vec3 localcoords, float width, int rows, int cols) {
 		GLfloat colwidth = width / cols;
 		GLfloat rowwidth = width / rows;
-
+		
 		for (int i = 0; i <= rows; i++) {
 			for (int j = 0; j <= cols; j++) {
-				_vertices.push_back(position.x + (j*colwidth));
+				_vertices.push_back(localcoords.x + (j*colwidth));
 				_vertices.push_back(0.0f);;
-				_vertices.push_back(position.z - (i*rowwidth));
+				_vertices.push_back(localcoords.z + (i*rowwidth));
 
-				_vertices.push_back(position.x + (j*colwidth));
-				_vertices.push_back(position.z - (i*rowwidth));
+				_vertices.push_back(localcoords.x + (j*colwidth));
+				_vertices.push_back(localcoords.z + (i*rowwidth));
 			}
 		}
 
@@ -66,8 +66,7 @@ namespace chunk {
 		glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 	}
 
-	bool Model::vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index)
-	{
+	bool Model::vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index) const {
 		auto ray_pos = ray.atPoint(ray_mag);
 		for (int i = 0; i < _vertices.size(); i += 5) {
 			glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
@@ -79,8 +78,7 @@ namespace chunk {
 		return false;
 	}
 
-	bool Model::faceIntersectsWithRay(const Ray & ray, unsigned int& face_index)
-	{
+	bool Model::faceIntersectsWithRay(const Ray & ray, unsigned int& face_index) const {
 		bool ret = false;
 		for (int i = 0; i < _indices.size(); i += 6) {
 			glm::vec3 lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
@@ -106,7 +104,19 @@ namespace chunk {
 
 	std::vector<GLuint> Model::indicesInCube(GLfloat leftbound, GLfloat rightbound, GLfloat topbound, GLfloat bottombound, GLfloat frontbound, GLfloat backbound)
 	{
-		std::vector<GLuint> _indices_in_box;
+		std::vector<GLuint> indices_in_box;
+		indicesInCube(indices_in_box, leftbound, rightbound, topbound, bottombound, frontbound, backbound);
+		return indices_in_box;
+	}
+
+	void Model::indicesInCube(std::vector<unsigned int>& indices,
+												 GLfloat leftbound,
+												 GLfloat rightbound,
+												 GLfloat topbound,
+												 GLfloat bottombound,
+												 GLfloat frontbound,
+												 GLfloat backbound) 
+	{
 		for (int i = 0; i < _vertices.size(); i += 5) {
 			glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
 			if ((currentpoint.x <= rightbound) && (currentpoint.x >= leftbound) &&
@@ -114,14 +124,14 @@ namespace chunk {
 				(currentpoint.z <= frontbound) && (currentpoint.z >= backbound)
 				)
 			{
-				_indices_in_box.push_back(i);
+				indices.push_back(i);
 			}
 		}
-
-		return _indices_in_box;
 	}
 
-	void Model::modifyVertex( int vertex, const glm::vec3& change)
+
+
+	void Model::modifyVertex( unsigned int vertex, const glm::vec3& change)
 	{
 		_vertices[vertex] += change.x;
 		_vertices[vertex + 1] += change.y;
@@ -152,8 +162,11 @@ namespace chunk {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	void Model::draw()
-	{
+	void Model::addIndicesToVector(std::vector<unsigned int>& v) const {
+		v.insert(v.end(), _indices.begin(), _indices.end());
+	}
+
+	void Model::draw() {
 		glBindVertexArray(_VAO);
 		glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);

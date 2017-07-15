@@ -4,13 +4,14 @@
 #include <glm/ext.hpp>
 
 namespace chunk {
-	Geometry::Geometry(glm::vec3 position, GLfloat width)
+	Geometry::Geometry(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width)
 		: _normal(0.0f, 1.0f, 0.0f) //hard code for now
-		, _position(position)
-		, _xmin(_position.x)
-		, _xmax(_position.x + width)
-		, _zmax(_position.z)
-		, _zmin(_position.z - width)
+		, _localcoords(localcoords)
+		, _worldtransform(worldtransform)
+		, _xmax(_localcoords.x + _worldtransform.x + width)
+		, _xmin(_localcoords.x + _worldtransform.x)
+		, _zmax(_localcoords.z + _worldtransform.z + width)
+		, _zmin(_localcoords.z + _worldtransform.z)
 	{
 	}
 
@@ -18,7 +19,7 @@ namespace chunk {
 	{
 	}
 
-	bool Geometry::intersectsWithRay(const Ray & ray, float& intersect_point)
+	bool Geometry::intersectsWithRay(const Ray & ray, float& intersect_point) const
 	{
 		bool ret = false;
 		if (ray.intersectWithPlane(_normal, _offset, intersect_point)) {
@@ -36,7 +37,7 @@ namespace chunk {
 		return ret;
 	}
 
-	bool Geometry::intersectsWithRay(const Ray & ray)
+	bool Geometry::intersectsWithRay(const Ray & ray) const
 	{
 		float dummy;
 		return intersectsWithRay(ray, dummy);
@@ -44,17 +45,39 @@ namespace chunk {
 
 	bool Geometry::intersectsWithCube(GLfloat leftbound,
 									  GLfloat rightbound,
-									  GLfloat topbound,
-									  GLfloat bottombound,
 									  GLfloat frontbound,
-									  GLfloat backbound) 
+									  GLfloat backbound,
+									  bool& surrounds) const
 	{
-		return true;
+		surrounds = false;
+		if (_xmax <= rightbound && _xmin >= leftbound &&
+			_zmax <= frontbound  && _zmin >= backbound)
+		{
+			surrounds = true;
+			return true;
+		}
+		if ( ( ( rightbound <= _xmax && rightbound >= _xmin ) ||
+			   ( leftbound  <= _xmax && leftbound  >= _xmin ) ) &&
+			 ( ( frontbound <= _zmax && frontbound >= _zmin ) || 
+			   ( backbound  <= _zmax && backbound  >= _zmin ) )
+			)
+		{
+			return true;
+		}
+
+		return false;
 	}
 
-	void Geometry::buildModelMatrix(glm::mat4 & model)
+	void Geometry::buildModelMatrix(glm::mat4 & model) const
 	{
-		//model = glm::translate(_position);
+		model = glm::translate(_worldtransform);
+	}
+
+	void Geometry::vectorToChunkLocalCoords(glm::vec4& vec)
+	{
+		glm::mat4 modelMat;
+		buildModelMatrix(modelMat);
+		vec = glm::inverse(modelMat) * vec;
 	}
 
 }

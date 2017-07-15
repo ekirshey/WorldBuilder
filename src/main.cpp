@@ -86,7 +86,7 @@ int main(int, char**)
 	World world;
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++) {
-			world.AddChunk(glm::vec3(-1.0f + (2*i), 0.0f, 1.0f + (2*j)), 2.0f, 100, 100);
+			world.AddChunk(glm::vec3(-1.0f, 0.0f, -1.0f),glm::vec3((2*i), 0.0f, (2*j)), 2.0f, 100, 100);
 		}
 	}
 
@@ -144,7 +144,7 @@ int main(int, char**)
 	Ray boxstart;
 	glm::mat4 box_model;
 	glm::mat4 scaled_box_model;
-	std::vector<GLuint> indices_in_box;
+	World::ChunksIndices indices_in_box;
 	GLfloat box_scale = 0.1f;
 	Ray ray;
 	bool modkey_pressed = false;
@@ -280,7 +280,8 @@ int main(int, char**)
 				// Get this in terms of worldchunk
 				ray.intersectWithPlane(normal, offset, planedistance);
 
-				box_model = glm::translate(glm::vec3(ray.d_x() * planedistance +camerapos.x, 0.0f, ray.d_z()*planedistance+camerapos.z));
+				auto rayAtPoint = ray.atPoint(planedistance);
+				box_model = glm::translate(glm::vec3(rayAtPoint.x, 0.0f, rayAtPoint.z));
 				scaled_box_model = glm::scale(box_model, glm::vec3(box_scale, 1.0f, box_scale));
 			}
 			else if (shiftdown & boxdraw) {
@@ -288,6 +289,7 @@ int main(int, char**)
 				if (movement < 0.1f) {
 					movement = 0.1f;
 				}
+				//scaled_box_model = box_model;// glm::translate(box_model, glm::vec3(movement, 0.0f, movement));
 				scaled_box_model = glm::scale(box_model, glm::vec3(movement, 1.0f, movement));
 			}
 			else {	// If not drawing a box, check the ray intersections
@@ -306,28 +308,26 @@ int main(int, char**)
 
 		if (modkey_pressed && boxdraw) {
 
-			double leftbound = box_model[3][0] + (movement * -0.5);
-			double rightbound = box_model[3][0] + (movement * 0.5);
-			double topbound = box_model[3][1] + (movement * 0.5);
-			double bottombound = box_model[3][1] + (movement * -0.5);
-			double frontbound = box_model[3][2] + (movement * 0.5);
-			double backbound = box_model[3][2] + (movement * -0.5);
-			/*
-			indices_in_box = chunks[0].indicesInCube(leftbound,
-				rightbound,
-				topbound,
-				bottombound,
-				frontbound,
-				backbound);
-			*/
+			auto leftbound = scaled_box_model * glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f);
+			auto rightbound = scaled_box_model * glm::vec4(0.5f, -0.5f, -0.5f, 1.0f);
+			auto topbound = scaled_box_model * glm::vec4(-0.5f, 0.5f, -0.5f, 1.0f);
+			auto bottombound = scaled_box_model * glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f);
+			auto frontbound = scaled_box_model * glm::vec4(-0.5f, -0.5f, 0.5f, 1.0f);
+			auto backbound = scaled_box_model * glm::vec4(-0.5f, -0.5f, -0.5f, 1.0f);
+			indices_in_box = world.ChunkIndicesInCube(leftbound.x,
+				rightbound.x,
+				topbound.y,
+				bottombound.y,
+				frontbound.z,
+				backbound.z);
 		}
 
 		// adjust selected vertex
 		if (vertex_selected | triangle_selected | boxdraw) {
 			glm::vec3 change(moveX, moveY, moveZ);
 			if (boxdraw) {
-				for (int i = 0; i < indices_in_box.size(); i++) {
-					//chunks[0].modifyVertex(indices_in_box[i], change);
+				for (const auto& ci : indices_in_box) {
+					world.ModifyChunkVertices(ci.first, ci.second, change);
 				}
 			}
 			else if (triangle_selected) {
@@ -342,8 +342,6 @@ int main(int, char**)
 				selected_vertex.z = genverts[selected_index + 2];
 #endif
 			}
-
-			world.ReloadChunk(chunkid);
 
 		}
 

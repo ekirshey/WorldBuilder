@@ -7,31 +7,33 @@
 namespace chunk {
 	class Geometry {
 	public:
-		Geometry(glm::vec3 position, GLfloat width);
+		Geometry(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width);
 		~Geometry();
 
-		bool intersectsWithRay(const Ray& ray, float& intersect_point);
-		bool intersectsWithRay(const Ray& ray);
+		bool intersectsWithRay(const Ray& ray, float& intersect_point) const;
+		bool intersectsWithRay(const Ray& ray) const;
 		bool intersectsWithCube(GLfloat leftbound,
 								GLfloat rightbound,
-								GLfloat topbound,
-								GLfloat bottombound,
 								GLfloat frontbound,
-								GLfloat backbound);
+								GLfloat backbound,
+								bool& surrounds) const;
 
-		void buildModelMatrix(glm::mat4& model);
+		void buildModelMatrix(glm::mat4& model) const;
 
+		void vectorToChunkLocalCoords(glm::vec4& vec);
 	private:
 		// Geometry
 		glm::vec3 _normal;
 		glm::vec3 _offset;		// offset from the world origin (0,0,0)
-		glm::vec3 _position;
+		glm::vec3 _localcoords;
+		glm::vec3 _worldtransform;
 
 		GLfloat _yaw;
 		GLfloat _roll;
 		GLfloat _pitch;
 		GLfloat _width;
 
+		//2d plane so no y vals
 		GLfloat _xmax;
 		GLfloat _xmin;
 		GLfloat _zmax;

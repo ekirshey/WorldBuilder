@@ -1,51 +1,47 @@
 #pragma once
 #include <vector>
+#include <unordered_map>
 #include "ChunkModel.h"
 #include "ChunkGeometry.h"
 #include "Shader.h"
 
-// I think i can replace this class with a pair
-// using WorldChunk = std::pair<int, chunk::Geometry>;
-class WorldChunk {
-	public:
+// Essentially a pair/tuple with a wrapper for semantic sugar
+struct WorldChunk {
 		WorldChunk(int modelid, const chunk::Geometry& geometry) 
-			: _modelid(modelid)
-			, _geometry(geometry)
+			: modelid(modelid)
+			, geometry(geometry)
 		{
 
 		}
 
-		bool intersectsWithRay(const Ray& ray, float& intersect_point) {
-			return _geometry.intersectsWithRay(ray, intersect_point);
-		}
-
-		void buildModelMatrix(glm::mat4& model) {
-			_geometry.buildModelMatrix(model);
-		}
-
-		int modelId() { return _modelid; }
-
-	private:
-		int _modelid;
-		chunk::Geometry _geometry;
+		int modelid;
+		chunk::Geometry geometry;
 };
 
 class World {
 	public:
+		using ChunksIndices = std::unordered_map<int, std::vector<unsigned int>>;
 		World();
-		void AddChunk(glm::vec3 position, GLfloat width, int rows, int cols);
+		void AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width, int rows, int cols);
 		int GetSelectedChunk(const Ray& ray, float& intersect_point);
 		void DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection);
 
 		bool ChunkVertexIntersectsWithRay(int chunkid, const Ray& ray, float intersect_point, unsigned int& vertex_id);
 		bool ChunkFaceIntersectsWithRay(int chunkid, const Ray& ray, unsigned int& face_index);
+		ChunksIndices ChunkIndicesInCube( GLfloat leftbound,
+										  GLfloat rightbound,
+										  GLfloat topbound,
+										  GLfloat bottombound,
+										  GLfloat frontbound,
+										  GLfloat backbound);
 
-		void ModifyChunkVertex( int chunkid, int vertex, const glm::vec3& change);
+		void ModifyChunkVertex( int chunkid, unsigned int vertex, const glm::vec3& change);
+		void ModifyChunkVertices(int chunkid, const std::vector<unsigned int> vertices, const glm::vec3 & change);
 		void ModifyChunkFace( int chunkid, int face, const glm::vec3& change);
 
-		void ReloadChunk(int chunkid);
 	private:
+		void _reloadChunk(int chunkid);
 		std::vector<chunk::Model> _models;
 		std::vector<WorldChunk> _chunks;
-
+		std::vector<unsigned int> _modifiedChunks;
 };
