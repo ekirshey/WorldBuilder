@@ -325,9 +325,8 @@ int main(int, char**)
 		}
 
 		world.DrawWorld(textureProgram, view, projection);
-		if (1) {
+		if (boxdraw) {
 			cubeProgram.useProgram();
-			glm::mat4 t_model;
 			GLint viewLoc = cubeProgram.getUniformLocation("view");
 			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
@@ -335,11 +334,9 @@ int main(int, char**)
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 			GLint modelLoc = textureProgram.getUniformLocation("model");
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(t_model));
-			//glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(scaled_box_model));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(scaled_box_model));
 
-			//shapes::drawBorderedCube();
-			shapes::drawTriangle();
+			shapes::drawBorderedCube();
 		}
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  // Turn off wireframe before rendering gui
 
