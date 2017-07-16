@@ -2,6 +2,8 @@
 #include <vector>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace shapes {
 	namespace{
@@ -16,13 +18,24 @@ namespace shapes {
 			0.5,  0.5,  0.5,
 			-0.5,  0.5,  0.5,
 		};
-
 		const std::vector<unsigned int> bordered_cube_indices{
 			0,1,1,2,2,3,3,0, // First square
 			0,4,1,5,2,6,3,7, // connections
 			4,5,5,6,6,7,7,4  // Second square
 		};
 		GLuint BORDERCUBEVBO, BORDERCUBEVAO, BORDERCUBEEBO;
+
+		// Square
+		const std::vector<GLfloat> square = {
+			0.0,  0.0,  0.0,
+			0.0, -1.0,  0.0,
+			1.0, -1.0,  0.0,
+			1.0,  0.0,  0.0,
+		};
+		const std::vector<unsigned int> square_indices{
+			0,1,1,2,2,3,3,0, // First square
+		};
+		GLuint SQUAREVBO, SQUAREVAO, SQUAREEBO;
 
 		// Triangle
 		std::vector<GLfloat> triangle;
@@ -128,26 +141,29 @@ namespace shapes {
 		glBindVertexArray(0); 
 	}
 
+	void _initializeSquare() {
+		glGenVertexArrays(1, &SQUAREVAO);
+		glGenBuffers(1, &SQUAREVBO);
+		glGenBuffers(1, &SQUAREEBO);
+		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
+		glBindVertexArray(SQUAREVAO);
+
+		glBindBuffer(GL_ARRAY_BUFFER, SQUAREVBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * square.size(), square.data(), GL_DYNAMIC_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SQUAREEBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * square_indices.size(), square_indices.data(), GL_DYNAMIC_DRAW);
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+		glEnableVertexAttribArray(0);
+
+		glBindVertexArray(0);
+	}
+
 	void initializeShapeEngine() {
 		_initializeBorderedCube();
 		_initializeTriangle();
-	}
-
-	void _destroyBorderedCube() {
-		glDeleteVertexArrays(1, &BORDERCUBEVAO);
-		glDeleteBuffers(1, &BORDERCUBEVBO);
-		glDeleteBuffers(1, &BORDERCUBEEBO);
-	}
-
-	void _destroyTriangle() {
-		glDeleteVertexArrays(1, &TRIANGLECUBEVAO);
-		glDeleteBuffers(1, &TRIANGLECUBEVBO);
-//		glDeleteBuffers(1, &TRIANGLECUBEEBO);
-	}
-
-	void destroyShapeEngine() {
-		_destroyBorderedCube();
-		_destroyTriangle();
+		_initializeSquare();
 	}
 
 	void drawBorderedCube() {
@@ -156,9 +172,47 @@ namespace shapes {
 		glBindVertexArray(0);
 	}
 
+	void drawSquare() {
+		glBindVertexArray(SQUAREVAO);
+		glDrawElements(GL_LINES, square_indices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+
+	void drawSquare(GLint modelloc, glm::vec3 position, float width, float angle, glm::vec3 axis)
+	{
+		glm::mat4 model;
+		model = glm::translate(model, position - glm::vec3(0.5, 0.5, 0.5));
+		glUniformMatrix4fv(modelloc, 1, GL_FALSE, glm::value_ptr(model));
+	}
+
 	void drawTriangle() {
 		glBindVertexArray(TRIANGLECUBEVAO);
 		glDrawElements(GL_TRIANGLES, triangle.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
+
+	void _destroyBorderedCube() {
+		glDeleteVertexArrays(1, &BORDERCUBEVAO);
+		glDeleteBuffers(1, &BORDERCUBEVBO);
+		glDeleteBuffers(1, &BORDERCUBEEBO);
+	}
+
+	void _destroySquare() {
+		glDeleteVertexArrays(1, &TRIANGLECUBEVAO);
+		glDeleteBuffers(1, &TRIANGLECUBEVBO);
+		glDeleteBuffers(1, &TRIANGLECUBEEBO);
+	}
+
+	void _destroyTriangle() {
+		glDeleteVertexArrays(1, &TRIANGLECUBEVAO);
+		glDeleteBuffers(1, &TRIANGLECUBEVBO);
+		glDeleteBuffers(1, &TRIANGLECUBEEBO);
+	}
+
+	void destroyShapeEngine() {
+		_destroyBorderedCube();
+		_destroySquare();
+		_destroyTriangle();
+	}
+
 }

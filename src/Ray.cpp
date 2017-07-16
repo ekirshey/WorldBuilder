@@ -14,6 +14,12 @@ Ray::Ray(float norm_x, float norm_y, glm::vec3 origin, glm::mat4 proj, glm::mat4
 	reset(norm_x, norm_y, origin, proj, view);
 }
 
+Ray::Ray(glm::vec3 origin, glm::vec3 direction)
+	: _origin(origin)
+	, _direction(direction)
+{
+}
+
 void Ray::reset(float norm_x, float norm_y, glm::vec3 origin, glm::mat4 proj, glm::mat4 view) {
 	_origin = origin;
 	glm::vec4 ray_clip(norm_x, norm_y, -1.0, 1.0);
@@ -84,21 +90,58 @@ bool Ray::intersectWithPoint(const glm::vec3& point, float ray_magnitude) const 
 	}
 }
 
-bool Ray::intersectWithPoint(const glm::vec3& rayAtPoint, const glm::vec3& point) const {
-	// Replace .001 with "epsilon"
-	if ((rayAtPoint.x <= point.x + 0.001) && (rayAtPoint.x >= point.x - 0.001) &&
-		(rayAtPoint.y <= point.y + 0.001) && (rayAtPoint.y >= point.y - 0.001) &&
-		(rayAtPoint.z <= point.z + 0.001) && (rayAtPoint.z >= point.z - 0.001)
-		)
-	{
-		std::cout << glm::to_string(rayAtPoint) << std::endl;
-		return true;
-	}
-	else {
-		return false;
-	}
-}
+namespace RayUtils {
+	// https://stackoverflow.com/questions/29195120/determine-whether-a-point-is-inside-triangle-in-3d-space
+	// http://blackpawn.com/texts/pointinpoly/default.html
+	// Change of basis but my matrix math isnt working for some reason
+	bool intersectWithTriangle(const glm::vec3& rayAtPoint, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3) {
+		/*
+		auto b = p2 - p1;
+		auto c = p3 - p1;
+		auto n = glm::cross(b,c);
+		glm::mat3 b_c_n(b,c,n);
+		glm::vec3 t_u_v = glm::inverse(b_c_n) * rayAtPoint;
+		*/
 
-float distance(const Ray& a, const Ray& b) {
-	return glm::distance(a.direction(), b.direction());
+		auto v0 = p3 - p1;
+		auto v1 = p2 - p1;
+		auto v2 = rayAtPoint - p1;
+
+		// Compute dot products
+		auto dot00 = glm::dot(v0, v0);
+		auto dot01 = glm::dot(v0, v1);
+		auto dot02 = glm::dot(v0, v2);
+		auto dot11 = glm::dot(v1, v1);
+		auto dot12 = glm::dot(v1, v2);
+
+		// Compute barycentric coordinates
+		auto invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+		auto u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+		auto v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+		if ((u >= 0 && u <= 1) && (v >= 0 && v <= 1) && (u + v <= 1)) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	bool intersectWithPoint(const glm::vec3& rayAtPoint, const glm::vec3& point) {
+		// Replace .001 with "epsilon"
+		if ((rayAtPoint.x <= point.x + 0.001) && (rayAtPoint.x >= point.x - 0.001) &&
+			(rayAtPoint.y <= point.y + 0.001) && (rayAtPoint.y >= point.y - 0.001) &&
+			(rayAtPoint.z <= point.z + 0.001) && (rayAtPoint.z >= point.z - 0.001)
+			)
+		{
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	float distance(const Ray& a, const Ray& b) {
+		return glm::distance(a.direction(), b.direction());
+	}
 }

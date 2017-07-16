@@ -12,8 +12,6 @@
 #include <SDL.h>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include "Camera.h"
 #include "Texture.h"
@@ -31,7 +29,7 @@ struct textureinfo {
 };
 int main(int, char**)
 {
-	bool wireframe = false;
+	bool wireframe = true;
 	std::unordered_map<GLuint, textureinfo> texture_list;
 	int screenWidth = 1280;
 	int screenHeight = 720;
@@ -76,7 +74,7 @@ int main(int, char**)
 	}
 
 	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
-	ShaderProgram cubeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
+	ShaderProgram shapeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
 
 	GLuint texture = LoadTexture(mediapath + "container2.png", GL_RGBA);
 	textureinfo t;
@@ -92,7 +90,7 @@ int main(int, char**)
 
 	glm::vec4 selected_vertex;
 	bool vertex_selected = false;
-	bool triangle_selected = false;
+	bool face_selected = false;
 	unsigned int selected_index;
 	unsigned int selected_triangle;
 	GLfloat moveX = 0.0;
@@ -114,6 +112,7 @@ int main(int, char**)
 	bool modkey_pressed = false;
 	GLfloat movement;
 	int chunkid;
+	int selection_type = 0;
     while (!done)
     {
         SDL_Event event;
@@ -190,7 +189,6 @@ int main(int, char**)
 			modkey_pressed = true;
 		}
 
-
         ImGui_ImplSdlGL3_NewFrame(window);
 		char buf[256] = "";
 
@@ -208,6 +206,11 @@ int main(int, char**)
 				texture_list.insert({ texture, t });
 			}
 
+			ImGui::Text("Selection Type: ");
+			ImGui::RadioButton("Model", &selection_type, 0); ImGui::SameLine();
+			ImGui::RadioButton("Face", &selection_type, 1); ImGui::SameLine();
+			ImGui::RadioButton("Vertex", &selection_type, 2);
+
 			ImGui::Checkbox("Wireframe", &wireframe);
 
 			for (auto it = texture_list.begin(); it != texture_list.end(); ++it) {
@@ -221,7 +224,6 @@ int main(int, char**)
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		textureProgram.useProgram();
 
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 projection = glm::perspective(camera.Zoom(), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
@@ -236,6 +238,8 @@ int main(int, char**)
 			float norm_x = (GLfloat)(2.0f *xpos) / screenWidth - 1.0f;
 			float norm_y = 1.0f - (GLfloat)(2.0f*ypos) / screenHeight;
 			ray.reset(norm_x, norm_y, camera.Position(), projection, view);
+			float intersect_point;
+			chunkid = world.GetSelectedChunk(ray, intersect_point);
 
 			if (shiftdown & !boxdraw) {
 				boxdraw = true;
@@ -249,7 +253,7 @@ int main(int, char**)
 				scaled_box_model = glm::scale(box_model, glm::vec3(box_scale, 1.0f, box_scale));
 			}
 			else if (shiftdown & boxdraw) {
-				movement = distance(ray, boxstart) * 2;
+				movement = RayUtils::distance(ray, boxstart) * 2;
 				if (movement < 0.1f) {
 					movement = 0.1f;
 				}
@@ -258,13 +262,11 @@ int main(int, char**)
 			}
 			else {	// If not drawing a box, check the ray intersections
 				boxdraw = false;
-				float intersect_point;
-				triangle_selected = false;
-				chunkid = world.GetSelectedChunk(ray, intersect_point);
+				face_selected = false;
 				vertex_selected = world.ChunkVertexIntersectsWithRay(chunkid, ray, intersect_point, selected_index);
 
 				if (!vertex_selected) {
-					triangle_selected = world.ChunkFaceIntersectsWithRay(chunkid, ray, selected_triangle);
+					face_selected = world.ChunkFaceIntersectsWithRay(chunkid, ray, intersect_point, selected_triangle);
 				}
 			}
 
@@ -287,14 +289,14 @@ int main(int, char**)
 		}
 
 		// adjust selected vertex
-		if (vertex_selected | triangle_selected | boxdraw) {
+		if (vertex_selected | face_selected | boxdraw) {
 			glm::vec3 change(moveX, moveY, moveZ);
 			if (boxdraw) {
 				for (const auto& ci : indices_in_box) {
 					world.ModifyChunkVertices(ci.first, ci.second, change);
 				}
 			}
-			else if (triangle_selected) {
+			else if (face_selected) {
 				world.ModifyChunkFace(chunkid, selected_triangle, change);
 			}
 			else {
@@ -325,12 +327,14 @@ int main(int, char**)
 		}
 
 		world.DrawWorld(textureProgram, view, projection);
+		world.DrawWorldOverlay(shapeProgram, view, projection);
+
 		if (boxdraw) {
-			cubeProgram.useProgram();
-			GLint viewLoc = cubeProgram.getUniformLocation("view");
+			//shapeProgram.useProgram(); // I know I'm drawing the overlay so I don't need this
+			GLint viewLoc = shapeProgram.getUniformLocation("view");
 			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-			GLint projectionLoc = cubeProgram.getUniformLocation("projection");
+			GLint projectionLoc = shapeProgram.getUniformLocation("projection");
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 			GLint modelLoc = textureProgram.getUniformLocation("model");
@@ -338,6 +342,7 @@ int main(int, char**)
 
 			shapes::drawBorderedCube();
 		}
+
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  // Turn off wireframe before rendering gui
 
 		// Render gui

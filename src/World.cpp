@@ -1,7 +1,11 @@
-#include "World.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/ext.hpp>
+#include "World.h"
+#include "ShapePrimitives.h"
 
 World::World()
+	: _focusedChunk(-1)
 {
 }
 
@@ -13,8 +17,10 @@ void World::AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat wi
 
 int World::GetSelectedChunk(const Ray & ray, float& intersect_point)
 {
+	_focusedChunk = -1;
 	for (int i = 0; i < _chunks.size(); i++) {
 		if (_chunks[i].geometry.intersectsWithRay(ray, intersect_point)) {
+			_focusedChunk = i;
 			return i;
 		}
 	}
@@ -48,6 +54,29 @@ void World::DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::ma
 	}
 }
 
+
+void World::DrawWorldOverlay(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection) {
+	shader.useProgram();
+
+	GLint viewLoc = shader.getUniformLocation("view");
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+	GLint projectionLoc = shader.getUniformLocation("projection");
+	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+	if (_focusedChunk != -1) {
+		glm::mat4 model;
+		_chunks[_focusedChunk].geometry.buildModelMatrix(model);
+		model = glm::translate(model, glm::vec3(-1.0, 0.01, 1.0));
+		model = glm::scale(model, glm::vec3(2.0f, 1.0f, 2.0f));
+		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		GLint modelLoc = shader.getUniformLocation("model");
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+		shapes::drawSquare();
+	}
+}
+
 bool World::ChunkVertexIntersectsWithRay(int chunkid, const Ray & ray, float intersect_point, unsigned int& vertex_id)
 {
 	
@@ -56,7 +85,9 @@ bool World::ChunkVertexIntersectsWithRay(int chunkid, const Ray & ray, float int
 	}
 
 	int modelid = _chunks[chunkid].modelid;
-	if (!_models[modelid].vertexIntersectsWithRay(ray, intersect_point, vertex_id)) {
+	glm::vec4 ray_pos = glm::vec4(ray.atPoint(intersect_point),1.0f);
+	_chunks[chunkid].geometry.vectorToChunkLocalCoords(ray_pos);
+	if (!_models[modelid].vertexIntersectsWithPoint(ray_pos, vertex_id)) {
 		return false;
 	}
 
@@ -64,14 +95,16 @@ bool World::ChunkVertexIntersectsWithRay(int chunkid, const Ray & ray, float int
 
 }
 
-bool World::ChunkFaceIntersectsWithRay(int chunkid, const Ray & ray, unsigned int& face_index)
+bool World::ChunkFaceIntersectsWithRay(int chunkid, const Ray & ray, float intersect_point, unsigned int& face_index)
 {
 	if (chunkid < 0 || chunkid > _chunks.size()) {
 		return false;
 	}
 
 	int modelid = _chunks[chunkid].modelid;
-	if (!_models[modelid].faceIntersectsWithRay(ray, face_index)) {
+	glm::vec4 ray_pos = glm::vec4(ray.atPoint(intersect_point), 1.0f);
+	_chunks[chunkid].geometry.vectorToChunkLocalCoords(ray_pos);
+	if (!_models[modelid].faceIntersectsWithPoint(ray_pos, face_index)) {
 		return false;
 	}
 

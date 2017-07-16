@@ -11,7 +11,7 @@
 class Camera {
 public:
 	Camera(GLfloat width, GLfloat height)
-		: _cameraSpeed(0.01f)
+		: _cameraSpeed(0.04f)
 		, _cameraPos(glm::vec3(0.0f, 3.0f, 0.0f))
 		, _cameraFront(glm::vec3(0.0f, 0.0f, -1.0f))
 		, _cameraUp(glm::vec3(0.0f, 1.0f, 0.0f))
@@ -51,7 +51,7 @@ public:
 		_lastX = xpos;
 		_lastY = ypos;
 
-		GLfloat sensitivity = 0.15f;
+		GLfloat sensitivity = 0.35f;
 		xoffset *= sensitivity;
 		yoffset *= sensitivity;
 		_yaw += xoffset;

@@ -66,11 +66,10 @@ namespace chunk {
 		glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 	}
 
-	bool Model::vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index) const {
-		auto ray_pos = ray.atPoint(ray_mag);
+	bool Model::vertexIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& vertex_index) const {
 		for (int i = 0; i < _vertices.size(); i += 5) {
 			glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
-			if (ray.intersectWithPoint(ray_pos, currentpoint)) {
+			if (RayUtils::intersectWithPoint(ray_pos, currentpoint)) {
 				vertex_index = i;
 				return true;
 			}
@@ -78,22 +77,61 @@ namespace chunk {
 		return false;
 	}
 
-	bool Model::faceIntersectsWithRay(const Ray & ray, unsigned int& face_index) const {
+	bool Model::faceIntersectsWithPoint(const Ray & ray, unsigned int& face_index) const {
 		bool ret = false;
+		glm::vec3 lt_0;
+		glm::vec3 lt_1;
+		glm::vec3 lt_2;
+
+		glm::vec3 rt_0;
+		glm::vec3 rt_1;
+		glm::vec3 rt_2;
 		for (int i = 0; i < _indices.size(); i += 6) {
-			glm::vec3 lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
-			glm::vec3 lt_1 = glm::vec3(_vertices[_indices[i + 1] * 5], _vertices[_indices[i + 1] * 5 + 1], _vertices[_indices[i + 1] * 5 + 2]);
-			glm::vec3 lt_2 = glm::vec3(_vertices[_indices[i + 2] * 5], _vertices[_indices[i + 2] * 5 + 1], _vertices[_indices[i + 2] * 5 + 2]);
+			lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
+			lt_1 = glm::vec3(_vertices[_indices[i + 1] * 5], _vertices[_indices[i + 1] * 5 + 1], _vertices[_indices[i + 1] * 5 + 2]);
+			lt_2 = glm::vec3(_vertices[_indices[i + 2] * 5], _vertices[_indices[i + 2] * 5 + 1], _vertices[_indices[i + 2] * 5 + 2]);
 			if (ray.intersectWithTriangle(lt_0, lt_1, lt_2)) {
 				ret = true;
 				face_index = i;
 				break;
 			}
 
-			glm::vec3 rt_0 = glm::vec3(_vertices[_indices[i + 3] * 5], _vertices[_indices[i + 3] * 5 + 1], _vertices[_indices[i + 3] * 5 + 2]);
-			glm::vec3 rt_1 = glm::vec3(_vertices[_indices[i + 4] * 5], _vertices[_indices[i + 4] * 5 + 1], _vertices[_indices[i + 4] * 5 + 2]);
-			glm::vec3 rt_2 = glm::vec3(_vertices[_indices[i + 5] * 5], _vertices[_indices[i + 5] * 5 + 1], _vertices[_indices[i + 5] * 5 + 2]);
+			rt_0 = glm::vec3(_vertices[_indices[i + 3] * 5], _vertices[_indices[i + 3] * 5 + 1], _vertices[_indices[i + 3] * 5 + 2]);
+			rt_1 = glm::vec3(_vertices[_indices[i + 4] * 5], _vertices[_indices[i + 4] * 5 + 1], _vertices[_indices[i + 4] * 5 + 2]);
+			rt_2 = glm::vec3(_vertices[_indices[i + 5] * 5], _vertices[_indices[i + 5] * 5 + 1], _vertices[_indices[i + 5] * 5 + 2]);
 			if (ray.intersectWithTriangle(rt_0, rt_1, rt_2)) {
+				ret = true;
+				face_index = i + 3;
+				break;
+			}
+		}
+		return ret;
+	}
+
+	bool Model::faceIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& face_index) const
+	{
+		bool ret = false;
+		glm::vec3 lt_0;
+		glm::vec3 lt_1;
+		glm::vec3 lt_2;
+
+		glm::vec3 rt_0;
+		glm::vec3 rt_1;
+		glm::vec3 rt_2;
+		for (int i = 0; i < _indices.size(); i += 6) {
+			lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
+			lt_1 = glm::vec3(_vertices[_indices[i + 1] * 5], _vertices[_indices[i + 1] * 5 + 1], _vertices[_indices[i + 1] * 5 + 2]);
+			lt_2 = glm::vec3(_vertices[_indices[i + 2] * 5], _vertices[_indices[i + 2] * 5 + 1], _vertices[_indices[i + 2] * 5 + 2]);
+			if (RayUtils::intersectWithTriangle(ray_pos,lt_0, lt_1, lt_2)) {
+				ret = true;
+				face_index = i;
+				break;
+			}
+
+			rt_0 = glm::vec3(_vertices[_indices[i + 3] * 5], _vertices[_indices[i + 3] * 5 + 1], _vertices[_indices[i + 3] * 5 + 2]);
+			rt_1 = glm::vec3(_vertices[_indices[i + 4] * 5], _vertices[_indices[i + 4] * 5 + 1], _vertices[_indices[i + 4] * 5 + 2]);
+			rt_2 = glm::vec3(_vertices[_indices[i + 5] * 5], _vertices[_indices[i + 5] * 5 + 1], _vertices[_indices[i + 5] * 5 + 2]);
+			if (RayUtils::intersectWithTriangle(ray_pos, rt_0, rt_1, rt_2)) {
 				ret = true;
 				face_index = i + 3;
 				break;

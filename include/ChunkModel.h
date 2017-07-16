@@ -11,8 +11,10 @@ namespace chunk {
 		Model(const Model& m);
 		~Model();
 
-		bool vertexIntersectsWithRay(const Ray& ray, float ray_mag, unsigned int& vertex_index) const;
-		bool faceIntersectsWithRay(const Ray& ray, unsigned int& face_index) const;
+		bool vertexIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& vertex_index) const;
+		bool faceIntersectsWithPoint(const Ray& ray, unsigned int& face_index) const;
+		bool faceIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& face_index) const;
+
 		void addIndicesToVector(std::vector<unsigned int>& v) const;
 
 		std::vector<GLuint> indicesInCube(GLfloat leftbound,
