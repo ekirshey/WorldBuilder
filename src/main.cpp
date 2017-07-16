@@ -20,6 +20,7 @@
 #include "Shader.h"
 #include "Ray.h"
 #include "World.h"
+#include "ShapePrimitives.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
@@ -60,28 +61,12 @@ int main(int, char**)
 	// Set this to true so GLEW knows to use a modern approach to retrieving function pointers and extensions
 	glewExperimental = GL_TRUE;
 	glewInit();
-
     // Setup ImGui binding
     ImGui_ImplSdlGL3_Init(window);
 
 	glEnable(GL_DEPTH_TEST);
 
-	std::vector<GLfloat> cube = {
-		-0.5, -0.5, -0.5,
-		0.5, -0.5, -0.5,
-		0.5,  0.5, -0.5,
-		-0.5,  0.5, -0.5,
-		-0.5, -0.5,  0.5,
-		0.5, -0.5,  0.5,
-		0.5,  0.5,  0.5,
-		-0.5,  0.5,  0.5,
-	};
-
-	std::vector<unsigned int> cube_indices{
-		0,1,1,2,2,3,3,0, // First square
-		0,4,1,5,2,6,3,7, // connections
-		4,5,5,6,6,7,7,4  // Second square
-	};
+	shapes::initializeShapeEngine();
 
 	World world;
 	for (int i = 0; i < 5; i++) {
@@ -98,27 +83,6 @@ int main(int, char**)
 	t.name = "Container2";
 	t.state = true;
 	texture_list.insert({ texture, t });
-
-	GLuint CUBEVBO, CUBEVAO, CUBEEBO;
-	glGenVertexArrays(1, &CUBEVAO);
-	glGenBuffers(1, &CUBEVBO);
-	glGenBuffers(1, &CUBEEBO);
-	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-	glBindVertexArray(CUBEVAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, CUBEVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * cube.size(), cube.data(), GL_DYNAMIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, CUBEEBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * cube_indices.size(), cube_indices.data(), GL_DYNAMIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
-
-	// Is this needed?
-	glBindBuffer(GL_ARRAY_BUFFER, 0); // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-
-	glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
 
     bool show_test_window = true;
     bool show_another_window = false;
@@ -361,9 +325,9 @@ int main(int, char**)
 		}
 
 		world.DrawWorld(textureProgram, view, projection);
-		if (boxdraw) {
+		if (1) {
 			cubeProgram.useProgram();
-
+			glm::mat4 t_model;
 			GLint viewLoc = cubeProgram.getUniformLocation("view");
 			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
@@ -371,12 +335,11 @@ int main(int, char**)
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 			GLint modelLoc = textureProgram.getUniformLocation("model");
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(scaled_box_model));
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(t_model));
+			//glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(scaled_box_model));
 
-			glBindVertexArray(CUBEVAO);
-			//glDrawArrays(GL_TRIANGLES, 0, genverts.size());
-			glDrawElements(GL_LINES, cube_indices.size(), GL_UNSIGNED_INT, 0); //glDrawElements for indices, glDrawArrays for vertices
-			glBindVertexArray(0);
+			//shapes::drawBorderedCube();
+			shapes::drawTriangle();
 		}
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  // Turn off wireframe before rendering gui
 
@@ -386,9 +349,7 @@ int main(int, char**)
         SDL_GL_SwapWindow(window);
     }
 
-	glDeleteVertexArrays(1, &CUBEVAO);
-	glDeleteBuffers(1, &CUBEVBO);
-	glDeleteBuffers(1, &CUBEEBO);
+	shapes::destroyShapeEngine();
 
     // Cleanup
     ImGui_ImplSdlGL3_Shutdown();
