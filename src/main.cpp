@@ -67,8 +67,8 @@ int main(int, char**)
 	shapes::initializeShapeEngine();
 
 	World world;
-	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < 5; j++) {
+	for (int i = 0; i < 20; i++) {
+		for (int j = 0; j < 20; j++) {
 			world.AddChunk(glm::vec3(-1.0f, 0.0f, -1.0f),glm::vec3((2*i), 0.0f, (2*j)), 2.0f, 100, 100);
 		}
 	}

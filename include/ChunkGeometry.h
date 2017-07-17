@@ -21,6 +21,12 @@ namespace chunk {
 		void buildModelMatrix(glm::mat4& model) const;
 
 		void vectorToChunkLocalCoords(glm::vec4& vec);
+
+		glm::vec3 currentPosition() {
+			glm::mat4 transform;
+			buildModelMatrix(transform);
+			return transform * glm::vec4(_localcoords,1.0f);
+		}
 	private:
 		// Geometry
 		glm::vec3 _normal;

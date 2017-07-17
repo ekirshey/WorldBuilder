@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/ext.hpp>
 
 namespace shapes {
 	namespace{
@@ -41,6 +42,7 @@ namespace shapes {
 		std::vector<GLfloat> triangle;
 		std::vector<unsigned int> triangle_indices;
 		GLuint TRIANGLECUBEVBO, TRIANGLECUBEVAO, TRIANGLECUBEEBO;
+
 	}
 
 	void _recurseTriangle(const glm::vec3& top, const glm::vec3& bl, const glm::vec3& br, std::vector<glm::vec3>& pts, std::vector<unsigned int>& indices, int recurse_steps) {
@@ -166,6 +168,20 @@ namespace shapes {
 		_initializeSquare();
 	}
 
+	glm::mat4 createSquareWorldTransform(const Square& square)
+	{
+		glm::mat4 model;
+		float scale = square._width / 1.0f;
+
+		model = glm::translate(glm::vec3(square._top_left.x, square._top_left.y, square._width + square._top_left.z));
+		model = glm::scale(model, glm::vec3(scale, 1.0f, scale));
+		model = glm::rotate(model, glm::radians(square._pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+		model = glm::rotate(model, glm::radians(square._yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::rotate(model, glm::radians(square._roll), glm::vec3(0.0f, 0.0f, 1.0f));
+		return model;
+
+	}
+
 	void drawBorderedCube() {
 		glBindVertexArray(BORDERCUBEVAO);
 		glDrawElements(GL_LINES, bordered_cube_indices.size(), GL_UNSIGNED_INT, 0); //glDrawElements for indices, glDrawArrays for vertices
@@ -178,19 +194,14 @@ namespace shapes {
 		glBindVertexArray(0);
 	}
 
-	void drawSquare(GLint modelloc, glm::vec3 position, float width, float angle, glm::vec3 axis)
-	{
-		glm::mat4 model;
-		model = glm::translate(model, position - glm::vec3(0.5, 0.5, 0.5));
-		glUniformMatrix4fv(modelloc, 1, GL_FALSE, glm::value_ptr(model));
-	}
-
 	void drawTriangle() {
 		glBindVertexArray(TRIANGLECUBEVAO);
 		glDrawElements(GL_TRIANGLES, triangle.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
+
+#pragma region CLEANUP
 	void _destroyBorderedCube() {
 		glDeleteVertexArrays(1, &BORDERCUBEVAO);
 		glDeleteBuffers(1, &BORDERCUBEVBO);
@@ -215,4 +226,7 @@ namespace shapes {
 		_destroyTriangle();
 	}
 
+
+
+#pragma endregion
 }

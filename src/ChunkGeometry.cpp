@@ -70,7 +70,7 @@ namespace chunk {
 
 	void Geometry::buildModelMatrix(glm::mat4 & model) const
 	{
-		model = glm::translate(_worldtransform);
+		model = glm::translate(model, _worldtransform);
 	}
 
 	void Geometry::vectorToChunkLocalCoords(glm::vec4& vec)

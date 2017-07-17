@@ -66,10 +66,11 @@ void World::DrawWorldOverlay(ShaderProgram shader, const glm::mat4& view, const 
 
 	if (_focusedChunk != -1) {
 		glm::mat4 model;
-		_chunks[_focusedChunk].geometry.buildModelMatrix(model);
-		model = glm::translate(model, glm::vec3(-1.0, 0.01, 1.0));
-		model = glm::scale(model, glm::vec3(2.0f, 1.0f, 2.0f));
-		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+		auto position = _chunks[_focusedChunk].geometry.currentPosition();
+		position.y = 0.01;
+		shapes::Square selectionBox(position, 2.0f, 90.0f);
+		model = shapes::createSquareWorldTransform(selectionBox);
 		GLint modelLoc = shader.getUniformLocation("model");
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
