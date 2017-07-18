@@ -36,7 +36,8 @@ namespace chunk {
 		void modifyFace( int face, const glm::vec3& change);
 		void reloadVertexData();
 
-		bool vertexPosition(int vertexid, glm::vec3& vertexPosition) const;
+		bool vertexPosition(int vertexid, glm::vec3& vertexposition) const;
+		bool facePositions(int index, std::vector<glm::vec3>& facepositions) const;
 
 		void draw();
 	private:

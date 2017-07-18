@@ -150,13 +150,25 @@ void World::ModifyChunkFace(int chunkid, int face, const glm::vec3& change)
 }
 
 
-bool World::getChunkVertexPosition(int chunkid, int vertexid, glm::vec3& vertexPosition) const
+bool World::getChunkVertexPosition(int chunkid, int vertexid, glm::vec3& vertexposition) const
 {
 	if (chunkid < 0) {
 		return false;
 	}
 	int modelid = _chunks[chunkid].modelid;
-	if (_models[modelid].vertexPosition(vertexid, vertexPosition)) {
+	if (_models[modelid].vertexPosition(vertexid, vertexposition)) {
+		return true;
+	}
+	return false;
+}
+
+bool World::getChunkFacePositions(int chunkid, int indexid, std::vector<glm::vec3>& facepositions) const
+{
+	if (chunkid < 0) {
+		return false;
+	}
+	int modelid = _chunks[chunkid].modelid;
+	if (_models[modelid].facePositions(indexid, facepositions)) {
 		return true;
 	}
 	return false;

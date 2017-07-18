@@ -76,6 +76,9 @@ namespace chunk {
 	}
 
 	bool Model::vertexIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& vertex_index) const {
+		// Skip rows above the raypos
+		int startIndex = (ray_pos.z / (_width / _rows));
+		startIndex = startIndex * _cols * 5;
 		for (int i = 0; i < _vertices.size(); i += 5) {
 			glm::vec3 currentpoint = glm::vec3(_vertices[i], _vertices[i + 1], _vertices[i + 2]);
 			if (RayUtils::intersectWithPoint(ray_pos, currentpoint)) {
@@ -212,14 +215,32 @@ namespace chunk {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	bool Model::vertexPosition(int vertexid, glm::vec3& vertexPosition) const
+	bool Model::vertexPosition(int vertexid, glm::vec3& vertexposition) const
 	{
-		if (vertexid > 0 && vertexid < _vertices.size()) {
-			vertexPosition = glm::vec3(_vertices[vertexid], _vertices[vertexid+1], _vertices[vertexid + 2]);
+		if (vertexid >= 0 && vertexid < _vertices.size()) {
+			vertexposition = glm::vec3(_vertices[vertexid], _vertices[vertexid+1], _vertices[vertexid + 2]);
 			return true;
 		}
 		return false;
 
+	}
+
+	bool Model::facePositions(int index, std::vector<glm::vec3>& facepositions) const
+	{
+		if (index >= 0 && index < _indices.size()) {
+			facepositions.push_back(glm::vec3(_vertices[_indices[index] * 5],
+											  _vertices[_indices[index] * 5 + 1],
+											  _vertices[_indices[index] * 5 + 2]));
+			facepositions.push_back(glm::vec3(_vertices[_indices[index + 1] * 5], 
+											  _vertices[_indices[index + 1] * 5 + 1],
+											  _vertices[_indices[index + 1] * 5 + 2]));
+			facepositions.push_back(glm::vec3(_vertices[_indices[index + 2] * 5],
+											  _vertices[_indices[index + 2] * 5 + 1],
+											  _vertices[_indices[index + 2] * 5 + 2]));
+
+			return true;
+		}
+		return false;
 	}
 
 	void Model::addIndicesToVector(std::vector<unsigned int>& v) const {

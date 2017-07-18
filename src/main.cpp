@@ -306,7 +306,7 @@ int main(int, char**)
 				}
 			}
 			else if (face_selected) {
-				overlay.setFocusedFace(selected_index);
+				overlay.setFocusedFace(selected_triangle);
 				world.ModifyChunkFace(chunkid, selected_triangle, change);
 			}
 			else {

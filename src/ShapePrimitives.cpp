@@ -38,6 +38,14 @@ namespace shapes {
 		};
 		GLuint SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
 
+		// Vertex triangle for face selection 
+		const std::vector<GLfloat> vertex_triangle = {
+			0.0,  0.0,  0.0,
+			0.0,  0.0,  1.0,
+			1.0,  0.0,  1.0
+		};
+		GLuint VERTEX_TRIANGLE_VAO, VERTEX_TRIANGLE_VBO;
+
 		// Triangle
 		std::vector<GLfloat> triangle;
 		std::vector<unsigned int> triangle_indices;
@@ -199,11 +207,26 @@ namespace shapes {
 
 	}
 
+	void _initializeVertexTriangle() {
+		glGenVertexArrays(1, &VERTEX_TRIANGLE_VAO);
+		glGenBuffers(1, &VERTEX_TRIANGLE_VBO);
+		glBindVertexArray(VERTEX_TRIANGLE_VAO);
+
+		glBindBuffer(GL_ARRAY_BUFFER, VERTEX_TRIANGLE_VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vertex_triangle.size(), vertex_triangle.data(), GL_DYNAMIC_DRAW);
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+		glEnableVertexAttribArray(0);
+
+		glBindVertexArray(0);
+	}
+
 	void initializeShapeEngine() {
 		_initializeBorderedCube();
 		_initializeTriangle();
 		_initializeSquare();
 		_initializeHollowCircle(50);
+		_initializeVertexTriangle();
 	}
 
 	glm::mat4 createSquareWorldTransform(const Square& square)
@@ -260,6 +283,18 @@ namespace shapes {
 	void drawTriangle() {
 		glBindVertexArray(TRIANGLE_VAO);
 		glDrawElements(GL_TRIANGLES, triangle_indices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+
+	void loadVertexTriangleData(const std::vector<GLfloat>& triangle) {
+		glBindBuffer(GL_ARRAY_BUFFER, VERTEX_TRIANGLE_VBO);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * triangle.size(), triangle.data());
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+
+	void drawVertexTriangle() {
+		glBindVertexArray(VERTEX_TRIANGLE_VAO);
+		glDrawArrays(GL_TRIANGLES, 0, vertex_triangle.size());
 		glBindVertexArray(0);
 	}
 

@@ -12,7 +12,7 @@ class Camera {
 public:
 	Camera(GLfloat width, GLfloat height)
 		: _cameraSpeed(0.04f)
-		, _cameraPos(glm::vec3(0.0f, 3.0f, 0.0f))
+		, _cameraPos(glm::vec3(3.0f, 3.0f, 3.0f))
 		, _cameraFront(glm::vec3(0.0f, 0.0f, -1.0f))
 		, _cameraUp(glm::vec3(0.0f, 1.0f, 0.0f))
 		, _yaw(-90.0f)
@@ -21,6 +21,8 @@ public:
 		, _lastY(height/2.0)
 		, _fov(45.0)
 		, _firstMouse(true)
+		, _cameraLock(false)
+		, _cameraLockControl(false)
 	{
 
 	}
@@ -44,6 +46,21 @@ public:
 			_lastX = xpos;
 			_lastY = ypos;
 			_firstMouse = false;
+		}
+
+		if (keys[SDL_SCANCODE_CAPSLOCK]) {
+			if (!_cameraLockControl) {
+				_cameraLockControl = true;
+				_cameraLock ^= true;
+			}
+		}
+		else {
+			_cameraLockControl = false;
+		}
+
+		// Don't update the camera position if it's locked
+		if (_cameraLock) {
+			return;
 		}
 
 		GLfloat xoffset = xpos - _lastX;
@@ -84,10 +101,6 @@ public:
 	}
 
 	glm::mat4 GetViewMatrix() {
-		/*glm::mat4x4 lookat;
-		lookat[0] = glm::normalize(_cameraPos + _cameraFront);
-		lookat[3] = glm::vec4(-_cameraPos,1);
-		*/
 		return glm::lookAt(_cameraPos, _cameraPos + _cameraFront, _cameraUp);
 	}
 
@@ -108,4 +121,6 @@ private:
 	GLfloat _fov;
 
 	bool _firstMouse;
+	bool _cameraLock;
+	bool _cameraLockControl;
 };

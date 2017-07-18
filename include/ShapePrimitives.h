@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "Shader.h"
 #include <glm/glm.hpp>
 
@@ -44,11 +45,15 @@ namespace shapes {
 	glm::mat4 createSquareWorldTransform(const Square& square);
 	glm::mat4 createCircleWorldTransform(const Circle& circle);
 
+	// Temp
+	void loadVertexTriangleData(const std::vector<GLfloat>& triangle);
+
 	// Draw calls
 	void drawBorderedCube();
 	void drawSquare();
 	void drawTriangle();
 	void drawCircle();
+	void drawVertexTriangle();
 
 	
 }

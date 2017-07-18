@@ -44,7 +44,23 @@ void WorldOverlay::_chunkOvelay(ShaderProgram& shader, const World& world, const
 }
 
 void WorldOverlay::_faceOverlay(ShaderProgram& shader, const World& world, const glm::vec3& raypos) {
+	std::vector<glm::vec3> facepositions;
+	if (world.getChunkFacePositions(_focusedChunk, _focusedFace, facepositions)) {
+		auto chunkPosition = world.getChunkPosition(_focusedChunk);
+		std::vector<GLfloat> temp;
+		for (int i = 0; i < facepositions.size(); i++) {
+			temp.push_back(facepositions[i].x + chunkPosition.x);
+			temp.push_back(facepositions[i].y + chunkPosition.y + 0.01f);
+			temp.push_back(facepositions[i].z + chunkPosition.z);
+		}
+		shapes::loadVertexTriangleData(temp);
+		glm::mat4 model;
 
+		GLint modelLoc = shader.getUniformLocation("model");
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+		shapes::drawVertexTriangle();
+	}
 }
 
 void WorldOverlay::_vertexOverlay(ShaderProgram& shader, const World& world, const glm::vec3& raypos) {
@@ -54,11 +70,12 @@ void WorldOverlay::_vertexOverlay(ShaderProgram& shader, const World& world, con
 	if (world.getChunkVertexPosition(_focusedChunk, _focusedVertex, position)) {
 		auto chunkPosition = world.getChunkPosition(_focusedChunk);
 		//position = raypos;
-		position.y = 0.01;
-		shapes::Circle selectionCircle(chunkPosition + position, 0.01f, 90.0f);
-		if (_lastRayPos != raypos) {
-			_vertexModel = shapes::createCircleWorldTransform(selectionCircle);
+		if (position.y == 0.0f) {
+			position.y = 0.01;
 		}
+
+		shapes::Circle selectionCircle(chunkPosition + position, 0.01f, 90.0f);
+		_vertexModel = shapes::createCircleWorldTransform(selectionCircle);
 		GLint modelLoc = shader.getUniformLocation("model");
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(_vertexModel));
 

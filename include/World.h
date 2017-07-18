@@ -42,7 +42,8 @@ class World {
 		glm::vec3 getChunkPosition(int chunkid) const { return _chunks[chunkid].geometry.currentPosition(); }
 		float getChunkWidth() const { return _chunkWidth; }
 
-		bool getChunkVertexPosition(int chunkid, int vertexid, glm::vec3& vertexPosition) const;
+		bool getChunkVertexPosition(int chunkid, int vertexid, glm::vec3& vertexposition) const;
+		bool getChunkFacePositions(int chunkid, int indexid, std::vector<glm::vec3>& facepositions) const;
 
 	private:
 		void _reloadChunk(int chunkid);
