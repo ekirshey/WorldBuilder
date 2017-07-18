@@ -19,6 +19,7 @@
 #include "Ray.h"
 #include "World.h"
 #include "ShapePrimitives.h"
+#include "WorldOverlay.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
@@ -29,7 +30,7 @@ struct textureinfo {
 };
 int main(int, char**)
 {
-	bool wireframe = true;
+	bool wireframe = false;
 	std::unordered_map<GLuint, textureinfo> texture_list;
 	int screenWidth = 1280;
 	int screenHeight = 720;
@@ -66,10 +67,11 @@ int main(int, char**)
 
 	shapes::initializeShapeEngine();
 
-	World world;
-	for (int i = 0; i < 20; i++) {
-		for (int j = 0; j < 20; j++) {
-			world.AddChunk(glm::vec3(-1.0f, 0.0f, -1.0f),glm::vec3((2*i), 0.0f, (2*j)), 2.0f, 100, 100);
+	World world(5.0f);
+	WorldOverlay overlay;
+	for (int i = 0; i < 5; i++) {
+		for (int j = 0; j < 5; j++) {
+			world.AddChunk(glm::vec3(0.0f, 0.0f, 0.0f),glm::vec3((5.0f*i), 0.0f, (5.0f*j)), 100, 100);
 		}
 	}
 
@@ -82,11 +84,7 @@ int main(int, char**)
 	t.state = true;
 	texture_list.insert({ texture, t });
 
-    bool show_test_window = true;
-    bool show_another_window = false;
-    ImVec4 window_color = ImColor(100, 100, 100);
     ImVec4 clear_color = ImColor(0, 0, 0);
-	float color[3] = { 0.0f, 1.0f, 0.0f };
 
 	glm::vec4 selected_vertex;
 	bool vertex_selected = false;
@@ -109,10 +107,12 @@ int main(int, char**)
 	World::ChunksIndices indices_in_box;
 	GLfloat box_scale = 0.1f;
 	Ray ray;
+	glm::vec3 rayPos;
 	bool modkey_pressed = false;
 	GLfloat movement;
 	int chunkid;
 	int selection_type = 0;
+	int operation_type = 0;
     while (!done)
     {
         SDL_Event event;
@@ -198,6 +198,7 @@ int main(int, char**)
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 			ImGui::Text("Mouse X: %d Mouse Y: %d", xpos, ypos);
 			ImGui::Text("Pick Ray: X: %f Y: %f Z: %f", ray.d_x(), ray.d_y(), ray.d_z());
+			ImGui::Text("Pick Ray World: X: %f Y: %f Z: %f", rayPos.x, rayPos.y, rayPos.z);
 			if (ImGui::InputText("Add Texture", buf, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
 				textureinfo t;
 				t.name = std::string(buf);
@@ -211,6 +212,10 @@ int main(int, char**)
 			ImGui::RadioButton("Face", &selection_type, 1); ImGui::SameLine();
 			ImGui::RadioButton("Vertex", &selection_type, 2);
 
+			ImGui::Text("Operation: ");
+			ImGui::RadioButton("Cube", &operation_type, 0); ImGui::SameLine();
+			ImGui::RadioButton("Circle", &operation_type, 1);;
+
 			ImGui::Checkbox("Wireframe", &wireframe);
 
 			for (auto it = texture_list.begin(); it != texture_list.end(); ++it) {
@@ -218,6 +223,8 @@ int main(int, char**)
 			}
 
         }
+		overlay.setSelectionMode(selection_type);
+
 
         // Rendering
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
@@ -240,6 +247,8 @@ int main(int, char**)
 			ray.reset(norm_x, norm_y, camera.Position(), projection, view);
 			float intersect_point;
 			chunkid = world.GetSelectedChunk(ray, intersect_point);
+			rayPos = ray.atPoint(intersect_point);
+			overlay.setFocusedChunk(chunkid);
 
 			if (shiftdown & !boxdraw) {
 				boxdraw = true;
@@ -297,22 +306,15 @@ int main(int, char**)
 				}
 			}
 			else if (face_selected) {
+				overlay.setFocusedFace(selected_index);
 				world.ModifyChunkFace(chunkid, selected_triangle, change);
 			}
 			else {
+				overlay.setFocusedVertex(selected_index);
 				world.ModifyChunkVertex(chunkid, selected_index, change);
-
-#ifdef REFACTOR
-				selected_vertex.x = genverts[selected_index];
-				selected_vertex.y = genverts[selected_index + 1];
-				selected_vertex.z = genverts[selected_index + 2];
-#endif
 			}
 
 		}
-
-		//GLint selectedvertexLoc = textureProgram.getUniformLocation("selected_vertex");
-		//glUniform4fv(selectedvertexLoc, 1, glm::value_ptr(selected_vertex));
 
 		// Render app
 		if (wireframe) {
@@ -327,7 +329,7 @@ int main(int, char**)
 		}
 
 		world.DrawWorld(textureProgram, view, projection);
-		world.DrawWorldOverlay(shapeProgram, view, projection);
+		overlay.drawOverlay(shapeProgram, world, rayPos, view, projection);
 
 		if (boxdraw) {
 			//shapeProgram.useProgram(); // I know I'm drawing the overlay so I don't need this
@@ -342,7 +344,7 @@ int main(int, char**)
 
 			shapes::drawBorderedCube();
 		}
-
+		
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);  // Turn off wireframe before rendering gui
 
 		// Render gui

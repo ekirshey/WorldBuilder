@@ -8,8 +8,8 @@ namespace shapes {
 		Square(glm::vec3 top_left, float width, float pitch = 0, float yaw = 0, float roll = 0) 
 			: _top_left(top_left)
 			, _width(width)
-			, _yaw(yaw)
 			, _pitch(pitch)
+			, _yaw(yaw)
 			, _roll(roll)
 		{}
 
@@ -20,16 +20,35 @@ namespace shapes {
 		float _roll;
 	};
 
+	struct Circle {
+		Circle(glm::vec3 center, float radius, float pitch = 0, float yaw = 0, float roll = 0)
+			: _center(center)
+			, _radius(radius)
+			, _pitch(pitch)
+			, _yaw(yaw)
+			, _roll(roll)
+		{
+
+		}
+
+		glm::vec3 _center;
+		float _radius;
+		float _yaw;
+		float _pitch;
+		float _roll;
+	};
+
 	void initializeShapeEngine();
 	void destroyShapeEngine();
 
 	glm::mat4 createSquareWorldTransform(const Square& square);
+	glm::mat4 createCircleWorldTransform(const Circle& circle);
 
 	// Draw calls
 	void drawBorderedCube();
-	void drawTriangle();
-	// Draw using loaded shader and model matrix
 	void drawSquare();
+	void drawTriangle();
+	void drawCircle();
 
 	
 }

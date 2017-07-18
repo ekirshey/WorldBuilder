@@ -22,7 +22,7 @@ namespace chunk {
 
 		void vectorToChunkLocalCoords(glm::vec4& vec);
 
-		glm::vec3 currentPosition() {
+		glm::vec3 currentPosition() const {
 			glm::mat4 transform;
 			buildModelMatrix(transform);
 			return transform * glm::vec4(_localcoords,1.0f);

@@ -200,6 +200,16 @@ namespace chunk {
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
+	bool Model::vertexPosition(int vertexid, glm::vec3& vertexPosition) const
+	{
+		if (vertexid > 0 && vertexid < _vertices.size()) {
+			vertexPosition = glm::vec3(_vertices[vertexid], _vertices[vertexid+1], _vertices[vertexid + 2]);
+			return true;
+		}
+		return false;
+
+	}
+
 	void Model::addIndicesToVector(std::vector<unsigned int>& v) const {
 		v.insert(v.end(), _indices.begin(), _indices.end());
 	}

@@ -4,23 +4,21 @@
 #include "World.h"
 #include "ShapePrimitives.h"
 
-World::World()
-	: _focusedChunk(-1)
+World::World(float chunkwidth)
+	: _chunkWidth(chunkwidth)
 {
 }
 
-void World::AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width, int rows, int cols)
+void World::AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, int rows, int cols)
 {
-	_models.push_back(chunk::Model(localcoords,width, rows, cols));
-	_chunks.push_back(WorldChunk(_models.size() - 1, chunk::Geometry(localcoords, worldtransform, width)));
+	_models.push_back(chunk::Model(localcoords,_chunkWidth, rows, cols));
+	_chunks.push_back(WorldChunk(_models.size() - 1, chunk::Geometry(localcoords, worldtransform, _chunkWidth)));
 }
 
 int World::GetSelectedChunk(const Ray & ray, float& intersect_point)
 {
-	_focusedChunk = -1;
 	for (int i = 0; i < _chunks.size(); i++) {
 		if (_chunks[i].geometry.intersectsWithRay(ray, intersect_point)) {
-			_focusedChunk = i;
 			return i;
 		}
 	}
@@ -51,30 +49,6 @@ void World::DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::ma
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 		_models[c.modelid].draw();
-	}
-}
-
-
-void World::DrawWorldOverlay(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection) {
-	shader.useProgram();
-
-	GLint viewLoc = shader.getUniformLocation("view");
-	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-	GLint projectionLoc = shader.getUniformLocation("projection");
-	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-	if (_focusedChunk != -1) {
-		glm::mat4 model;
-
-		auto position = _chunks[_focusedChunk].geometry.currentPosition();
-		position.y = 0.01;
-		shapes::Square selectionBox(position, 2.0f, 90.0f);
-		model = shapes::createSquareWorldTransform(selectionBox);
-		GLint modelLoc = shader.getUniformLocation("model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-		shapes::drawSquare();
 	}
 }
 
@@ -175,6 +149,18 @@ void World::ModifyChunkFace(int chunkid, int face, const glm::vec3& change)
 	_modifiedChunks.push_back(chunkid);
 }
 
+
+bool World::getChunkVertexPosition(int chunkid, int vertexid, glm::vec3& vertexPosition) const
+{
+	if (chunkid < 0) {
+		return false;
+	}
+	int modelid = _chunks[chunkid].modelid;
+	if (_models[modelid].vertexPosition(vertexid, vertexPosition)) {
+		return true;
+	}
+	return false;
+}
 
 void World::_reloadChunk(int chunkid) {
 	int modelid = _chunks[chunkid].modelid;

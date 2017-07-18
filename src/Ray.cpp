@@ -129,9 +129,9 @@ namespace RayUtils {
 
 	bool intersectWithPoint(const glm::vec3& rayAtPoint, const glm::vec3& point) {
 		// Replace .001 with "epsilon"
-		if ((rayAtPoint.x <= point.x + 0.001) && (rayAtPoint.x >= point.x - 0.001) &&
-			(rayAtPoint.y <= point.y + 0.001) && (rayAtPoint.y >= point.y - 0.001) &&
-			(rayAtPoint.z <= point.z + 0.001) && (rayAtPoint.z >= point.z - 0.001)
+		if ((rayAtPoint.x <= point.x + 0.005) && (rayAtPoint.x >= point.x - 0.005) &&
+			(rayAtPoint.y <= point.y + 0.005) && (rayAtPoint.y >= point.y - 0.005) &&
+			(rayAtPoint.z <= point.z + 0.005) && (rayAtPoint.z >= point.z - 0.005)
 			)
 		{
 			return true;

@@ -24,7 +24,7 @@ namespace shapes {
 			0,4,1,5,2,6,3,7, // connections
 			4,5,5,6,6,7,7,4  // Second square
 		};
-		GLuint BORDERCUBEVBO, BORDERCUBEVAO, BORDERCUBEEBO;
+		GLuint BORDER_CUBE_VBO, BORDER_CUBE_VAO, BORDER_CUBE_EBO;
 
 		// Square
 		const std::vector<GLfloat> square = {
@@ -36,12 +36,17 @@ namespace shapes {
 		const std::vector<unsigned int> square_indices{
 			0,1,1,2,2,3,3,0, // First square
 		};
-		GLuint SQUAREVBO, SQUAREVAO, SQUAREEBO;
+		GLuint SQUARE_VBO, SQUARE_VAO, SQUARE_EBO;
 
 		// Triangle
 		std::vector<GLfloat> triangle;
 		std::vector<unsigned int> triangle_indices;
-		GLuint TRIANGLECUBEVBO, TRIANGLECUBEVAO, TRIANGLECUBEEBO;
+		GLuint TRIANGLE_VBO, TRIANGLE_VAO, TRIANGLE_EBO;
+
+		// Hollow Circle
+		std::vector<GLfloat> hollow_circle;
+		std::vector<unsigned int> hollow_circle_indices;
+		GLuint HOLLOW_CIRCLE_VBO, HOLLOW_CIRCLE_VAO, HOLLOW_CIRCLE_EBO;
 
 	}
 
@@ -106,16 +111,16 @@ namespace shapes {
 			triangle.push_back(v.z);
 		}
 
-		glGenVertexArrays(1, &TRIANGLECUBEVAO);
-		glGenBuffers(1, &TRIANGLECUBEVBO);
-		glGenBuffers(1, &TRIANGLECUBEEBO);
+		glGenVertexArrays(1, &TRIANGLE_VAO);
+		glGenBuffers(1, &TRIANGLE_VBO);
+		glGenBuffers(1, &TRIANGLE_EBO);
 		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-		glBindVertexArray(TRIANGLECUBEVAO);
+		glBindVertexArray(TRIANGLE_VAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, TRIANGLECUBEVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, TRIANGLE_VBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * triangle.size(), triangle.data(), GL_DYNAMIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, TRIANGLECUBEEBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, TRIANGLE_EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * triangle_indices.size(), triangle_indices.data(), GL_DYNAMIC_DRAW);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
@@ -125,16 +130,16 @@ namespace shapes {
 	}
 
 	void _initializeBorderedCube() {
-		glGenVertexArrays(1, &BORDERCUBEVAO);
-		glGenBuffers(1, &BORDERCUBEVBO);
-		glGenBuffers(1, &BORDERCUBEEBO);
+		glGenVertexArrays(1, &BORDER_CUBE_VAO);
+		glGenBuffers(1, &BORDER_CUBE_VBO);
+		glGenBuffers(1, &BORDER_CUBE_EBO);
 		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-		glBindVertexArray(BORDERCUBEVAO);
+		glBindVertexArray(BORDER_CUBE_VAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, BORDERCUBEVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, BORDER_CUBE_VBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * bordered_cube.size(), bordered_cube.data(), GL_DYNAMIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BORDERCUBEEBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, BORDER_CUBE_EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * bordered_cube_indices.size(), bordered_cube_indices.data(), GL_DYNAMIC_DRAW);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
@@ -144,16 +149,16 @@ namespace shapes {
 	}
 
 	void _initializeSquare() {
-		glGenVertexArrays(1, &SQUAREVAO);
-		glGenBuffers(1, &SQUAREVBO);
-		glGenBuffers(1, &SQUAREEBO);
+		glGenVertexArrays(1, &SQUARE_VAO);
+		glGenBuffers(1, &SQUARE_VBO);
+		glGenBuffers(1, &SQUARE_EBO);
 		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-		glBindVertexArray(SQUAREVAO);
+		glBindVertexArray(SQUARE_VAO);
 
-		glBindBuffer(GL_ARRAY_BUFFER, SQUAREVBO);
+		glBindBuffer(GL_ARRAY_BUFFER, SQUARE_VBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * square.size(), square.data(), GL_DYNAMIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SQUAREEBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SQUARE_EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * square_indices.size(), square_indices.data(), GL_DYNAMIC_DRAW);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
@@ -162,16 +167,49 @@ namespace shapes {
 		glBindVertexArray(0);
 	}
 
+	void _initializeHollowCircle(unsigned int segments) {
+		// Generate Circle
+		glm::vec3 center(0.0f,0.0f,0.0f);
+		float radius = 1.0f;
+		float t = 0.0f;
+		float dt = (2 * glm::pi<float>()) / segments;
+		for (unsigned int i = 0; i < segments; i++) {
+			hollow_circle.push_back(center.x + radius * glm::cos(t));
+			hollow_circle.push_back(center.y + radius * glm::sin(t));
+			hollow_circle.push_back(center.z);
+			t += dt;
+			hollow_circle_indices.push_back(i);
+		}
+
+		// Bind
+		glGenVertexArrays(1, &HOLLOW_CIRCLE_VAO);
+		glGenBuffers(1, &HOLLOW_CIRCLE_VBO);
+		glGenBuffers(1, &HOLLOW_CIRCLE_EBO);
+		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
+		glBindVertexArray(HOLLOW_CIRCLE_VAO);
+
+		glBindBuffer(GL_ARRAY_BUFFER, HOLLOW_CIRCLE_VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * hollow_circle.size(), hollow_circle.data(), GL_DYNAMIC_DRAW);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, HOLLOW_CIRCLE_EBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * hollow_circle_indices.size(), hollow_circle_indices.data(), GL_DYNAMIC_DRAW);
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+		glEnableVertexAttribArray(0);
+
+	}
+
 	void initializeShapeEngine() {
 		_initializeBorderedCube();
 		_initializeTriangle();
 		_initializeSquare();
+		_initializeHollowCircle(50);
 	}
 
 	glm::mat4 createSquareWorldTransform(const Square& square)
 	{
 		glm::mat4 model;
-		float scale = square._width / 1.0f;
+		float scale = square._width;
 
 		model = glm::translate(glm::vec3(square._top_left.x, square._top_left.y, square._width + square._top_left.z));
 		model = glm::scale(model, glm::vec3(scale, 1.0f, scale));
@@ -182,42 +220,74 @@ namespace shapes {
 
 	}
 
+	glm::mat4 createCircleWorldTransform(const Circle& circle)
+	{
+		glm::mat4 model;
+		float scale = circle._radius;
+
+		model = glm::translate(model, glm::vec3(circle._center.x, circle._center.y, circle._center.z));
+		if (scale != 1.0f) {
+			model = glm::scale(model, glm::vec3(scale, 1.0f, scale));
+		}
+
+		if (circle._pitch != 0.0f) {
+			model = glm::rotate(model, glm::radians(circle._pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+		}
+
+		if (circle._roll != 0.0f) {
+			model = glm::rotate(model, glm::radians(circle._yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+		}
+
+		if (circle._roll != 0.0f) {
+			model = glm::rotate(model, glm::radians(circle._roll), glm::vec3(0.0f, 0.0f, 1.0f));
+		}
+		
+		return model;
+	}
+
 	void drawBorderedCube() {
-		glBindVertexArray(BORDERCUBEVAO);
+		glBindVertexArray(BORDER_CUBE_VAO);
 		glDrawElements(GL_LINES, bordered_cube_indices.size(), GL_UNSIGNED_INT, 0); //glDrawElements for indices, glDrawArrays for vertices
 		glBindVertexArray(0);
 	}
 
 	void drawSquare() {
-		glBindVertexArray(SQUAREVAO);
+		glBindVertexArray(SQUARE_VAO);
 		glDrawElements(GL_LINES, square_indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
 	void drawTriangle() {
-		glBindVertexArray(TRIANGLECUBEVAO);
-		glDrawElements(GL_TRIANGLES, triangle.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(TRIANGLE_VAO);
+		glDrawElements(GL_TRIANGLES, triangle_indices.size(), GL_UNSIGNED_INT, 0);
+		glBindVertexArray(0);
+	}
+
+	void drawCircle() {
+		glBindVertexArray(HOLLOW_CIRCLE_VAO);
+		glDrawElements(GL_LINE_LOOP, hollow_circle_indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
 
+
 #pragma region CLEANUP
 	void _destroyBorderedCube() {
-		glDeleteVertexArrays(1, &BORDERCUBEVAO);
-		glDeleteBuffers(1, &BORDERCUBEVBO);
-		glDeleteBuffers(1, &BORDERCUBEEBO);
+		glDeleteVertexArrays(1, &BORDER_CUBE_VAO);
+		glDeleteBuffers(1, &BORDER_CUBE_VBO);
+		glDeleteBuffers(1, &BORDER_CUBE_EBO);
 	}
 
 	void _destroySquare() {
-		glDeleteVertexArrays(1, &TRIANGLECUBEVAO);
-		glDeleteBuffers(1, &TRIANGLECUBEVBO);
-		glDeleteBuffers(1, &TRIANGLECUBEEBO);
+		glDeleteVertexArrays(1, &TRIANGLE_VAO);
+		glDeleteBuffers(1, &TRIANGLE_VBO);
+		glDeleteBuffers(1, &TRIANGLE_EBO);
 	}
 
 	void _destroyTriangle() {
-		glDeleteVertexArrays(1, &TRIANGLECUBEVAO);
-		glDeleteBuffers(1, &TRIANGLECUBEVBO);
-		glDeleteBuffers(1, &TRIANGLECUBEEBO);
+		glDeleteVertexArrays(1, &TRIANGLE_VAO);
+		glDeleteBuffers(1, &TRIANGLE_VBO);
+		glDeleteBuffers(1, &TRIANGLE_EBO);
 	}
 
 	void destroyShapeEngine() {

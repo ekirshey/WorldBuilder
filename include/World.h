@@ -21,10 +21,9 @@ struct WorldChunk {
 class World {
 	public:
 		using ChunksIndices = std::unordered_map<int, std::vector<unsigned int>>;
-		World();
-		void AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width, int rows, int cols);
+		World(float chunkwidth);
+		void AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, int rows, int cols);
 		int GetSelectedChunk(const Ray& ray, float& intersect_point);
-		void DrawWorldOverlay(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection);
 		void DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection);
 
 		bool ChunkVertexIntersectsWithRay(int chunkid, const Ray& ray, float intersect_point, unsigned int& vertex_id);
@@ -40,10 +39,15 @@ class World {
 		void ModifyChunkVertices(int chunkid, const std::vector<unsigned int> vertices, const glm::vec3 & change);
 		void ModifyChunkFace( int chunkid, int face, const glm::vec3& change);
 
+		glm::vec3 getChunkPosition(int chunkid) const { return _chunks[chunkid].geometry.currentPosition(); }
+		float getChunkWidth() const { return _chunkWidth; }
+
+		bool getChunkVertexPosition(int chunkid, int vertexid, glm::vec3& vertexPosition) const;
+
 	private:
 		void _reloadChunk(int chunkid);
 		std::vector<chunk::Model> _models;
 		std::vector<WorldChunk> _chunks;
+		float _chunkWidth;
 		std::vector<unsigned int> _modifiedChunks;
-		int _focusedChunk;
 };

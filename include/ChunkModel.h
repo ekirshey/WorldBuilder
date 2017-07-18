@@ -36,6 +36,7 @@ namespace chunk {
 		void modifyFace( int face, const glm::vec3& change);
 		void reloadVertexData();
 
+		bool vertexPosition(int vertexid, glm::vec3& vertexPosition) const;
 
 		void draw();
 	private:
