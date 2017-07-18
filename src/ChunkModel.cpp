@@ -1,7 +1,13 @@
 #include "ChunkModel.h"
 
+#include <iostream>
+
 namespace chunk {
-	Model::Model(glm::vec3 localcoords, float width, int rows, int cols) {
+	Model::Model(glm::vec3 localcoords, float width, int rows, int cols) 
+		: _width(width)
+		, _rows(rows)
+		, _cols(cols)
+	{
 		GLfloat colwidth = width / cols;
 		GLfloat rowwidth = width / rows;
 		
@@ -35,6 +41,9 @@ namespace chunk {
 	{
 		_vertices = m._vertices;
 		_indices = m._indices;
+		_width = m._width;
+		_rows = m._rows;
+		_cols = m._cols;
 		_bindOpenGLBuffers();
 	}
 
@@ -118,7 +127,10 @@ namespace chunk {
 		glm::vec3 rt_0;
 		glm::vec3 rt_1;
 		glm::vec3 rt_2;
-		for (int i = 0; i < _indices.size(); i += 6) {
+		// Skip rows above the raypos
+		int startIndex = (ray_pos.z / (_width / _rows));
+		startIndex = startIndex * _cols * 6;
+		for (int i = startIndex; i < _indices.size(); i += 6) {
 			lt_0 = glm::vec3(_vertices[_indices[i] * 5], _vertices[_indices[i] * 5 + 1], _vertices[_indices[i] * 5 + 2]);
 			lt_1 = glm::vec3(_vertices[_indices[i + 1] * 5], _vertices[_indices[i + 1] * 5 + 1], _vertices[_indices[i + 1] * 5 + 2]);
 			lt_2 = glm::vec3(_vertices[_indices[i + 2] * 5], _vertices[_indices[i + 2] * 5 + 1], _vertices[_indices[i + 2] * 5 + 2]);

@@ -42,6 +42,9 @@ namespace chunk {
 	private:
 		void _bindOpenGLBuffers();
 		// Geometry info
+		float _width;
+		int _rows;
+		int _cols;
 		std::vector<GLfloat> _vertices;
 		std::vector<GLuint> _indices;
 
