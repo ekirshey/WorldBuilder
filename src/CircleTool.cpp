@@ -12,19 +12,26 @@ CircleTool::CircleTool()
 void CircleTool::update(World * world, const glm::vec3& pickray, bool* keys)
 {
 	if (_active) {
+		World::ChunksVertexCount chunksvertexct;
 		std::vector<unsigned int> vertices;
 		_selectionCircle._center = pickray; 
 		if (_selectionCircle._center.y == 0.0f) {
 			_selectionCircle._center.y = 0.01f;
 		}
 
-		if (keys[SDL_SCANCODE_J]) {
-			world->ChunkVerticesInCircle(_selectionCircle, vertices);
-			for (const auto& v : vertices) {
-				world->ModifyChunkVertex(0, v, glm::vec3(0.0f, 0.01f, 0.0f));
+		if (keys[SDL_SCANCODE_J] || keys[SDL_SCANCODE_K]) {
+			glm::vec3 change = glm::vec3(0.0f, 0.1f, 0.0f);
+			if (keys[SDL_SCANCODE_K]) {
+				change = glm::vec3(0.0f, -0.1f, 0.0f);
 			}
-		}
-		else if (keys[SDL_SCANCODE_K]) {
+			int lastcount = 0;
+			world->ChunkVerticesInCircle(_selectionCircle, chunksvertexct, vertices);
+			for (const auto& ct : chunksvertexct) {
+				for (int i = lastcount; i < lastcount+ct.second; i++) {
+					world->ModifyChunkVertex(ct.first, vertices[i], change);
+				}
+				lastcount += ct.second;
+			}
 		}
 	}
 }

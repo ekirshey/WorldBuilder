@@ -188,6 +188,9 @@ namespace chunk {
 		float r2 = circle._radius * circle._radius;
 		int startIndex = ((circle._center.z - circle._radius) / (_width / _rows));
 		startIndex = startIndex * _cols * 5;
+		if (startIndex < 0) {
+			startIndex = 0;
+		}
 		for (int i = startIndex; i < _vertices.size(); i += 5) {
 			auto x = _vertices[i];
 			auto z = _vertices[i + 2];

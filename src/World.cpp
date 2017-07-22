@@ -124,12 +124,23 @@ World::ChunksIndices World::ChunkIndicesInCube( GLfloat leftbound,
 	return chunks_indices;
 }
 
-bool World::ChunkVerticesInCircle(const shapes::Circle& circle, std::vector<unsigned int>& vertices)
+bool World::ChunkVerticesInCircle(const shapes::Circle& circle, ChunksVertexCount& count, std::vector<unsigned int>& vertices)
 {
+	int chunkid = 0;
+	int currentCt = 0;
+	shapes::Circle localCircle = circle;
+	glm::vec4 localCircleCenter;
 	for (auto& c : _chunks) {
 		if (c.geometry.intersectsWithCircle(circle)) {
-			_models[c.modelid].verticesInCircle(circle, vertices);
+			localCircleCenter = glm::vec4(circle._center, 1.0f);
+			currentCt = vertices.size();
+			c.geometry.vectorToChunkLocalCoords(localCircleCenter);
+			localCircle._center = localCircleCenter;
+			_models[c.modelid].verticesInCircle(localCircle, vertices);
+			count.push_back({chunkid, vertices.size()-currentCt});
+			currentCt = vertices.size();
 		}
+		chunkid++;
 	}
 
 	return false;

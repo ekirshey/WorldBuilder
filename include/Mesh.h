@@ -51,7 +51,7 @@ public:
 	}
 
 	// Render the mesh
-	void Draw(const ShaderProgram& shader, int shaderprogram)
+	void Draw(ShaderProgram& shader, int shaderprogram)
 	{
 		// Bind appropriate textures
 		GLuint diffuseNr = 1;

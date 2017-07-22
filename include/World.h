@@ -21,6 +21,7 @@ struct WorldChunk {
 
 class World {
 	public:
+		using ChunksVertexCount = std::vector<std::pair<unsigned int, unsigned int>>;
 		using ChunksIndices = std::unordered_map<int, std::vector<unsigned int>>;
 		World(float chunkwidth);
 		void AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, int rows, int cols);
@@ -35,7 +36,7 @@ class World {
 										  GLfloat bottombound,
 										  GLfloat frontbound,
 										  GLfloat backbound);
-		bool ChunkVerticesInCircle( const shapes::Circle& circle, std::vector<unsigned int>& vertices);
+		bool ChunkVerticesInCircle( const shapes::Circle& circle, ChunksVertexCount& count, std::vector<unsigned int>& vertices);
 
 		void ModifyChunkVertex( int chunkid, unsigned int vertex, const glm::vec3& change);
 		void ModifyChunkVertices(int chunkid, const std::vector<unsigned int> vertices, const glm::vec3 & change);

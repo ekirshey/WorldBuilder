@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <fstream>
+#include <unordered_map>
 #include <GL/glew.h> 
 
 class ShaderProgram {
@@ -36,8 +37,14 @@ class ShaderProgram {
 			glUseProgram(_shaderprogram);
 		}
 
-		GLint getUniformLocation(std::string name) const{
-			return glGetUniformLocation(_shaderprogram, name.c_str());
+		GLint getUniformLocation(std::string name) {
+			if (_cacheduniforms.find(name) != _cacheduniforms.end()) {
+				return _cacheduniforms[name];
+			}
+			GLint uniform = glGetUniformLocation(_shaderprogram, name.c_str());
+			_cacheduniforms.insert({ name, uniform });
+
+			return uniform;
 		}
 
 	private:
@@ -94,5 +101,6 @@ class ShaderProgram {
 			return shaderId;
 		}
 
+		std::unordered_map<std::string, GLint> _cacheduniforms;
 		GLuint _shaderprogram;
 };
