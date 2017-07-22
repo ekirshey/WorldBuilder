@@ -124,7 +124,22 @@ World::ChunksIndices World::ChunkIndicesInCube( GLfloat leftbound,
 	return chunks_indices;
 }
 
+bool World::ChunkVerticesInCircle(const shapes::Circle& circle, std::vector<unsigned int>& vertices)
+{
+	for (auto& c : _chunks) {
+		if (c.geometry.intersectsWithCircle(circle)) {
+			_models[c.modelid].verticesInCircle(circle, vertices);
+		}
+	}
+
+	return false;
+}
+
 void World::ModifyChunkVertices(int chunkid, const std::vector<unsigned int> vertices, const glm::vec3& change) {
+	if (chunkid < 0 || chunkid >= _chunks.size()) {
+		return;
+	}
+
 	int modelid = _chunks[chunkid].modelid;
 
 	for (const auto& v : vertices) {
@@ -135,14 +150,21 @@ void World::ModifyChunkVertices(int chunkid, const std::vector<unsigned int> ver
 }
 
 void World::ModifyChunkVertex(int chunkid, unsigned int vertex, const glm::vec3& change) {
+	if (chunkid < 0 || chunkid >= _chunks.size()) {
+		return;
+	}
+
 	int modelid = _chunks[chunkid].modelid;
 	_models[modelid].modifyVertex(vertex, change);
 
 	_modifiedChunks.push_back(chunkid);
 }
 
-void World::ModifyChunkFace(int chunkid, int face, const glm::vec3& change)
-{
+void World::ModifyChunkFace(int chunkid, int face, const glm::vec3& change) {
+	if (chunkid < 0 || chunkid >= _chunks.size()) {
+		return;
+	}
+
 	int modelid = _chunks[chunkid].modelid;
 	_models[modelid].modifyFace(face, change);
 

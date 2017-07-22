@@ -182,7 +182,22 @@ namespace chunk {
 		}
 	}
 
-
+	// vertices are an int referring to the start index of the xyz values
+	void Model::verticesInCircle(const shapes::Circle& circle, std::vector<unsigned int>& vertices)
+	{
+		float r2 = circle._radius * circle._radius;
+		int startIndex = ((circle._center.z - circle._radius) / (_width / _rows));
+		startIndex = startIndex * _cols * 5;
+		for (int i = startIndex; i < _vertices.size(); i += 5) {
+			auto x = _vertices[i];
+			auto z = _vertices[i + 2];
+			auto h = circle._center.x;
+			auto k = circle._center.z;
+			if ( (x-h)*(x-h) + (z-k)*(z-k) <= r2) {
+				vertices.push_back(i);
+			}
+		}
+	}
 
 	void Model::modifyVertex( unsigned int vertex, const glm::vec3& change)
 	{

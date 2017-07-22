@@ -4,15 +4,18 @@
 #include <glm/ext.hpp>
 
 namespace chunk {
-	Geometry::Geometry(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width)
+	Geometry::Geometry(glm::vec3 localcoords, glm::vec3 translation, GLfloat width)
 		: _normal(0.0f, 1.0f, 0.0f) //hard code for now
 		, _localcoords(localcoords)
-		, _worldtransform(worldtransform)
-		, _xmax(_localcoords.x + _worldtransform.x + width)
-		, _xmin(_localcoords.x + _worldtransform.x)
-		, _zmax(_localcoords.z + _worldtransform.z + width)
-		, _zmin(_localcoords.z + _worldtransform.z)
+		, _translation(translation)
+		, _position(localcoords + translation)
+		, _width(width)
+		, _xmax(_localcoords.x + _translation.x + width)
+		, _xmin(_localcoords.x + _translation.x)
+		, _zmax(_localcoords.z + _translation.z + width)
+		, _zmin(_localcoords.z + _translation.z)
 	{
+
 	}
 
 	Geometry::~Geometry()
@@ -68,9 +71,25 @@ namespace chunk {
 		return false;
 	}
 
+	bool Geometry::intersectsWithCircle(const shapes::Circle & circle)
+	{
+		// circle + radius or circle - radius within bounds
+		auto diff = glm::abs(circle._center - glm::vec3(_position.x + _width / 2, 0.0f, _position.z + _width / 2));
+		if (diff.x > (circle._radius + _width / 2)) {
+			return false;
+		}
+		else if (diff.z > (circle._radius + _width / 2)) {
+			return false;
+		}
+
+		// Do I need to do a corner check?
+
+		return true;
+	}
+
 	void Geometry::buildModelMatrix(glm::mat4 & model) const
 	{
-		model = glm::translate(model, _worldtransform);
+		model = glm::translate(model, _translation);
 	}
 
 	void Geometry::vectorToChunkLocalCoords(glm::vec4& vec)

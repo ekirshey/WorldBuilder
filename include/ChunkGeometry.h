@@ -3,11 +3,12 @@
 #include <GL/glew.h>
 #include "Ray.h"
 #include "ChunkModel.h"
+#include "ShapePrimitives.h"
 
 namespace chunk {
 	class Geometry {
 	public:
-		Geometry(glm::vec3 localcoords, glm::vec3 worldtransform, GLfloat width);
+		Geometry(glm::vec3 localcoords, glm::vec3 translation, GLfloat width);
 		~Geometry();
 
 		bool intersectsWithRay(const Ray& ray, float& intersect_point) const;
@@ -17,6 +18,7 @@ namespace chunk {
 								GLfloat frontbound,
 								GLfloat backbound,
 								bool& surrounds) const;
+		bool intersectsWithCircle(const shapes::Circle& circle);
 
 		void buildModelMatrix(glm::mat4& model) const;
 
@@ -32,7 +34,8 @@ namespace chunk {
 		glm::vec3 _normal;
 		glm::vec3 _offset;		// offset from the world origin (0,0,0)
 		glm::vec3 _localcoords;
-		glm::vec3 _worldtransform;
+		glm::vec3 _translation;
+		glm::vec3 _position;
 
 		GLfloat _yaw;
 		GLfloat _roll;

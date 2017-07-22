@@ -4,6 +4,7 @@
 #include "ChunkModel.h"
 #include "ChunkGeometry.h"
 #include "Shader.h"
+#include "ShapePrimitives.h"
 
 // Essentially a pair/tuple with a wrapper for semantic sugar
 struct WorldChunk {
@@ -34,6 +35,7 @@ class World {
 										  GLfloat bottombound,
 										  GLfloat frontbound,
 										  GLfloat backbound);
+		bool ChunkVerticesInCircle( const shapes::Circle& circle, std::vector<unsigned int>& vertices);
 
 		void ModifyChunkVertex( int chunkid, unsigned int vertex, const glm::vec3& change);
 		void ModifyChunkVertices(int chunkid, const std::vector<unsigned int> vertices, const glm::vec3 & change);

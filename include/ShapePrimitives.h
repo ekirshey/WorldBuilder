@@ -22,6 +22,7 @@ namespace shapes {
 	};
 
 	struct Circle {
+		Circle() {}
 		Circle(glm::vec3 center, float radius, float pitch = 0, float yaw = 0, float roll = 0)
 			: _center(center)
 			, _radius(radius)

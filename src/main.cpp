@@ -20,6 +20,7 @@
 #include "World.h"
 #include "ShapePrimitives.h"
 #include "WorldOverlay.h"
+#include "CircleTool.h"
 #include <glm/ext.hpp>
 
 #define IM_ARRAYSIZE(_ARR) ((int)(sizeof(_ARR)/sizeof(*_ARR)))
@@ -113,6 +114,7 @@ int main(int, char**)
 	int chunkid;
 	int selection_type = 0;
 	int operation_type = 0;
+	CircleTool circleTool;
     while (!done)
     {
         SDL_Event event;
@@ -213,8 +215,9 @@ int main(int, char**)
 			ImGui::RadioButton("Vertex", &selection_type, 2);
 
 			ImGui::Text("Operation: ");
-			ImGui::RadioButton("Cube", &operation_type, 0); ImGui::SameLine();
-			ImGui::RadioButton("Circle", &operation_type, 1);;
+			ImGui::RadioButton("None", &operation_type, 0); ImGui::SameLine();
+			ImGui::RadioButton("Cube", &operation_type, 1); ImGui::SameLine();
+			ImGui::RadioButton("Circle", &operation_type, 2);;
 
 			ImGui::Checkbox("Wireframe", &wireframe);
 
@@ -224,7 +227,12 @@ int main(int, char**)
 
         }
 		overlay.setSelectionMode(selection_type);
-
+		if (operation_type == 2) {
+			circleTool.setActive();
+		}
+		else {
+			circleTool.setInactive();
+		}
 
         // Rendering
         glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
@@ -241,15 +249,15 @@ int main(int, char**)
 		glm::vec3 normal(0.0f, 1.0f, 0.0f);
 		glm::vec3 offset = camerapos;
 
-		if (mousedown) {
-			float norm_x = (GLfloat)(2.0f *xpos) / screenWidth - 1.0f;
-			float norm_y = 1.0f - (GLfloat)(2.0f*ypos) / screenHeight;
-			ray.reset(norm_x, norm_y, camera.Position(), projection, view);
-			float intersect_point;
-			chunkid = world.GetSelectedChunk(ray, intersect_point);
-			rayPos = ray.atPoint(intersect_point);
-			overlay.setFocusedChunk(chunkid);
+		float norm_x = (GLfloat)(2.0f *xpos) / screenWidth - 1.0f;
+		float norm_y = 1.0f - (GLfloat)(2.0f*ypos) / screenHeight;
+		ray.reset(norm_x, norm_y, camera.Position(), projection, view);
+		float intersect_point;
+		chunkid = world.GetSelectedChunk(ray, intersect_point);
+		rayPos = ray.atPoint(intersect_point);
 
+		if (mousedown) {
+			overlay.setFocusedChunk(chunkid);
 			if (shiftdown & !boxdraw) {
 				boxdraw = true;
 				boxstart = ray;
@@ -297,8 +305,10 @@ int main(int, char**)
 				backbound.z);
 		}
 
+		circleTool.update(&world, rayPos, keys);
+
 		// adjust selected vertex
-		if (vertex_selected | face_selected | boxdraw) {
+		if (operation_type == 0 && (vertex_selected | face_selected | boxdraw)) {
 			glm::vec3 change(moveX, moveY, moveZ);
 			if (boxdraw) {
 				for (const auto& ci : indices_in_box) {
@@ -330,6 +340,7 @@ int main(int, char**)
 
 		world.DrawWorld(textureProgram, view, projection);
 		overlay.drawOverlay(shapeProgram, world, rayPos, view, projection);
+		circleTool.draw(shapeProgram, view, projection);
 
 		if (boxdraw) {
 			//shapeProgram.useProgram(); // I know I'm drawing the overlay so I don't need this

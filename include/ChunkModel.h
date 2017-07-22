@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 #include "Ray.h"
+#include "ShapePrimitives.h"
 
 namespace chunk {
 	class Model {
@@ -31,6 +32,8 @@ namespace chunk {
 											   GLfloat bottombound,
 											   GLfloat frontbound,
 											   GLfloat backbound);
+
+		void verticesInCircle(const shapes::Circle& circle, std::vector<unsigned int>& vertices);
 
 		void modifyVertex( unsigned int vertex, const glm::vec3& change);
 		void modifyFace( int face, const glm::vec3& change);
