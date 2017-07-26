@@ -7,6 +7,9 @@ namespace chunk {
 		: _width(width)
 		, _rows(rows)
 		, _cols(cols)
+		, _initialized(false)
+		, _indices(0)
+		, _vertices(0)
 	{
 		GLfloat colwidth = width / cols;
 		GLfloat rowwidth = width / rows;
@@ -48,9 +51,11 @@ namespace chunk {
 	}
 
 	Model::~Model() {
-		glDeleteVertexArrays(1, &_VAO);
-		glDeleteBuffers(1, &_VBO);
-		glDeleteBuffers(1, &_EBO);
+		if (_initialized) {
+			glDeleteVertexArrays(1, &_VAO);
+			glDeleteBuffers(1, &_VBO);
+			glDeleteBuffers(1, &_EBO);
+		}
 	}
 
 	void Model::_bindOpenGLBuffers() {
@@ -66,13 +71,14 @@ namespace chunk {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * _indices.size(), _indices.data(), GL_DYNAMIC_DRAW);
 
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 		glEnableVertexAttribArray(0);
 
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 		glEnableVertexAttribArray(1);
 
 		glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
+		_initialized = true;
 	}
 
 	bool Model::vertexIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& vertex_index) const {
@@ -191,7 +197,14 @@ namespace chunk {
 		if (startIndex < 0) {
 			startIndex = 0;
 		}
-		for (int i = startIndex; i < _vertices.size(); i += 5) {
+
+		int endIndex = ((circle._center.z + circle._radius) / (_width / _rows));
+		endIndex = endIndex * _cols * 5;
+		if (endIndex > _vertices.size()) {
+			endIndex = _vertices.size();
+		}
+
+		for (int i = startIndex; i < endIndex; i += 5) {
 			auto x = _vertices[i];
 			auto z = _vertices[i + 2];
 			auto h = circle._center.x;
@@ -267,7 +280,7 @@ namespace chunk {
 
 	void Model::draw() {
 		glBindVertexArray(_VAO);
-		glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, sizeof(GLuint)*_indices.size(), GL_UNSIGNED_INT, _indices.data());
 		glBindVertexArray(0);
 	}
 }

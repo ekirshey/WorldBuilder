@@ -270,7 +270,7 @@ namespace shapes {
 
 	void drawBorderedCube() {
 		glBindVertexArray(BORDER_CUBE_VAO);
-		glDrawElements(GL_LINES, bordered_cube_indices.size(), GL_UNSIGNED_INT, 0); //glDrawElements for indices, glDrawArrays for vertices
+		glDrawElements(GL_LINES, bordered_cube_indices.size(), GL_UNSIGNED_INT, bordered_cube_indices.data()); //glDrawElements for indices, glDrawArrays for vertices
 		glBindVertexArray(0);
 	}
 
@@ -282,7 +282,7 @@ namespace shapes {
 
 	void drawTriangle() {
 		glBindVertexArray(TRIANGLE_VAO);
-		glDrawElements(GL_TRIANGLES, triangle_indices.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, triangle_indices.size(), GL_UNSIGNED_INT, triangle_indices.data());
 		glBindVertexArray(0);
 	}
 
@@ -300,7 +300,7 @@ namespace shapes {
 
 	void drawCircle() {
 		glBindVertexArray(HOLLOW_CIRCLE_VAO);
-		glDrawElements(GL_LINE_LOOP, hollow_circle_indices.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_LINE_LOOP, hollow_circle_indices.size(), GL_UNSIGNED_INT, hollow_circle_indices.data());
 		glBindVertexArray(0);
 	}
 

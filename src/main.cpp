@@ -33,8 +33,8 @@ int main(int, char**)
 {
 	bool wireframe = false;
 	std::unordered_map<GLuint, textureinfo> texture_list;
-	int screenWidth = 1280;
-	int screenHeight = 720;
+	int screenWidth = 1600;
+	int screenHeight = 1020;
 	std::string shaderpath = "F:/github/WorldBuilder/shaders/";
 	std::string mediapath = "F:/github/WorldBuilder/media/";
 
@@ -70,14 +70,14 @@ int main(int, char**)
 
 	World world(5.0f);
 	WorldOverlay overlay;
-	for (int i = 0; i < 5; i++) {
-		for (int j = 0; j < 5; j++) {
-			world.AddChunk(glm::vec3(0.0f, 0.0f, 0.0f),glm::vec3((5.0f*i), 0.0f, (5.0f*j)), 100, 100);
+	for (int i = 0; i < 1; i++) {
+		for (int j = 0; j < 1; j++) {
+			world.AddChunk(glm::vec3(0.0f, 0.0f, 0.0f),glm::vec3((1.0f*i), 0.0f, (1.0f*j)), 1, 1);
 		}
 	}
 
 	ShaderProgram textureProgram(shaderpath + "model.vert", shaderpath + "texture.frag");
-	ShaderProgram shapeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
+	//ShaderProgram shapeProgram(shaderpath + "simple.vert", shaderpath + "simple.frag");
 
 	GLuint texture = LoadTexture(mediapath + "container2.png", GL_RGBA);
 	textureinfo t;
@@ -115,6 +115,7 @@ int main(int, char**)
 	int selection_type = 0;
 	int operation_type = 0;
 	CircleTool circleTool;
+	GLfloat circleRadius = 0.0F;
     while (!done)
     {
         SDL_Event event;
@@ -152,7 +153,7 @@ int main(int, char**)
 		int xpos, ypos;
 		SDL_GetMouseState(&xpos, &ypos);
 		camera.Update(xpos, ypos, keys);
-
+#ifdef FOO
 		// Key handling
 		moveX = 0.0f;
 		moveY = 0.0f;
@@ -217,7 +218,11 @@ int main(int, char**)
 			ImGui::Text("Operation: ");
 			ImGui::RadioButton("None", &operation_type, 0); ImGui::SameLine();
 			ImGui::RadioButton("Cube", &operation_type, 1); ImGui::SameLine();
-			ImGui::RadioButton("Circle", &operation_type, 2);;
+			ImGui::RadioButton("Circle", &operation_type, 2);
+
+			if (operation_type == 2) {
+				ImGui::SliderFloat("Circle Radius", &circleRadius, 0, 10, "%.0f");
+			}
 
 			ImGui::Checkbox("Wireframe", &wireframe);
 
@@ -228,6 +233,7 @@ int main(int, char**)
         }
 		overlay.setSelectionMode(selection_type);
 		if (operation_type == 2) {
+			circleTool.setRadius(circleRadius);
 			circleTool.setActive();
 		}
 		else {
@@ -239,10 +245,10 @@ int main(int, char**)
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
+#endif
 		glm::mat4 view = camera.GetViewMatrix();
 		glm::mat4 projection = glm::perspective(camera.Zoom(), (float)screenWidth / (float)screenHeight, 0.1f, 100.0f);
-
+#ifdef FOO
 		auto camerapos = glm::vec4(camera.Position(),1.0f);
 		
 		// Plane info
@@ -337,8 +343,9 @@ int main(int, char**)
 				glBindTexture(GL_TEXTURE_2D, it->first); //bind the texture
 			}
 		}
-
+#endif
 		world.DrawWorld(textureProgram, view, projection);
+#ifdef FOO
 		overlay.drawOverlay(shapeProgram, world, rayPos, view, projection);
 		circleTool.draw(shapeProgram, view, projection);
 
@@ -360,7 +367,7 @@ int main(int, char**)
 
 		// Render gui
         ImGui::Render();
-
+#endif
         SDL_GL_SwapWindow(window);
     }
 

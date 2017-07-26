@@ -45,10 +45,12 @@ namespace chunk {
 		void draw();
 	private:
 		void _bindOpenGLBuffers();
+
 		// Geometry info
 		float _width;
 		int _rows;
 		int _cols;
+		bool _initialized;
 		std::vector<GLfloat> _vertices;
 		std::vector<GLuint> _indices;
 
