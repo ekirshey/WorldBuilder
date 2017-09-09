@@ -114,6 +114,7 @@ int main(int, char**)
 	int chunkid;
 	int selection_type = 0;
 	int operation_type = 0;
+	GLfloat circleRadius = 0.0f;
 	CircleTool circleTool;
     while (!done)
     {
@@ -217,7 +218,11 @@ int main(int, char**)
 			ImGui::Text("Operation: ");
 			ImGui::RadioButton("None", &operation_type, 0); ImGui::SameLine();
 			ImGui::RadioButton("Cube", &operation_type, 1); ImGui::SameLine();
-			ImGui::RadioButton("Circle", &operation_type, 2);;
+			ImGui::RadioButton("Circle", &operation_type, 2);
+
+			if (operation_type == 2) {
+				ImGui::SliderFloat("Circle Radius", &circleRadius, 0, 10, "%.0f");
+			}
 
 			ImGui::Checkbox("Wireframe", &wireframe);
 
@@ -228,6 +233,7 @@ int main(int, char**)
         }
 		overlay.setSelectionMode(selection_type);
 		if (operation_type == 2) {
+			circleTool.setRadius(circleRadius);
 			circleTool.setActive();
 		}
 		else {

@@ -11,7 +11,7 @@ World::World(float chunkwidth)
 
 void World::AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, int rows, int cols)
 {
-	_models.push_back(chunk::Model(localcoords,_chunkWidth, rows, cols));
+	_models.emplace_back(chunk::Model(localcoords,_chunkWidth, rows, cols));
 	_chunks.push_back(WorldChunk(_models.size() - 1, chunk::Geometry(localcoords, worldtransform, _chunkWidth)));
 }
 
@@ -26,8 +26,9 @@ int World::GetSelectedChunk(const Ray & ray, float& intersect_point)
 	return -1;
 }
 
-void World::DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection)
+void World::DrawWorld(ShaderProgram& shader, const glm::mat4& view, const glm::mat4& projection)
 {
+
 	for (auto& id : _modifiedChunks) {
 		_reloadChunk(id);
 	}
@@ -40,15 +41,15 @@ void World::DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::ma
 
 	GLint projectionLoc = shader.getUniformLocation("projection");
 	glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-	for (auto& c : _chunks) {
+	
+	for (int i = 0; i < _chunks.size(); i++) {
 		glm::mat4 model;
-		c.geometry.buildModelMatrix(model);
+		_chunks[i].geometry.buildModelMatrix(model);
 
 		GLint modelLoc = shader.getUniformLocation("model");
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-		_models[c.modelid].draw();
+		_models[_chunks[i].modelid].draw();
 	}
 }
 
@@ -130,6 +131,8 @@ bool World::ChunkVerticesInCircle(const shapes::Circle& circle, ChunksVertexCoun
 	int currentCt = 0;
 	shapes::Circle localCircle = circle;
 	glm::vec4 localCircleCenter;
+	int verticesperdim = circle._radius * 2 / 0.05;
+	vertices.reserve(verticesperdim*verticesperdim);
 	for (auto& c : _chunks) {
 		if (c.geometry.intersectsWithCircle(circle)) {
 			localCircleCenter = glm::vec4(circle._center, 1.0f);

@@ -7,6 +7,9 @@ namespace chunk {
 		: _width(width)
 		, _rows(rows)
 		, _cols(cols)
+		, _indices(0)
+		, _vertices(0)
+		, _swapbuffers(false)
 	{
 		GLfloat colwidth = width / cols;
 		GLfloat rowwidth = width / rows;
@@ -48,23 +51,28 @@ namespace chunk {
 	}
 
 	Model::~Model() {
-		glDeleteVertexArrays(1, &_VAO);
-		glDeleteBuffers(1, &_VBO);
-		glDeleteBuffers(1, &_EBO);
+		glDeleteVertexArrays(1, &_VAO_active);
+		glDeleteBuffers(1, &_VBO_active);
+		glDeleteBuffers(1, &_EBO_active);
+
+		glDeleteVertexArrays(1, &_VAO_back);
+		glDeleteBuffers(1, &_VBO_back);
+		glDeleteBuffers(1, &_EBO_back);
 	}
 
-	void Model::_bindOpenGLBuffers() {
-		glGenVertexArrays(1, &_VAO);
-		glGenBuffers(1, &_VBO);
-		glGenBuffers(1, &_EBO);
+	// Helper function
+	void Model::_loadVAOData(GLuint& vao, GLuint& vbo, GLuint& ebo) {
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &vbo);
+		glGenBuffers(1, &ebo);
 		// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
-		glBindVertexArray(_VAO);
+		glBindVertexArray(vao);
 
-		glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * _vertices.size(), _vertices.data(), GL_DYNAMIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _EBO);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * _indices.size(), _indices.data(), GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * _indices.size(), _indices.data(), GL_DYNAMIC_DRAW);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 		glEnableVertexAttribArray(0);
@@ -73,6 +81,11 @@ namespace chunk {
 		glEnableVertexAttribArray(1);
 
 		glBindVertexArray(0); // Unbind VAO (it's always a good thing to unbind any buffer/array to prevent strange bugs), remember: do NOT unbind the EBO, keep it bound to this VAO
+	}
+
+	void Model::_bindOpenGLBuffers() {
+		_loadVAOData(_VAO_active, _VBO_active, _EBO_active);
+		_loadVAOData(_VAO_back, _VBO_back, _EBO_back);
 	}
 
 	bool Model::vertexIntersectsWithPoint(glm::vec3 ray_pos, unsigned int& vertex_index) const {
@@ -191,7 +204,14 @@ namespace chunk {
 		if (startIndex < 0) {
 			startIndex = 0;
 		}
-		for (int i = startIndex; i < _vertices.size(); i += 5) {
+
+		int endIndex = ((circle._center.z + circle._radius) / (_width / _rows));
+		endIndex = endIndex * _cols * 5;
+		if (endIndex > _vertices.size()) {
+			endIndex = _vertices.size();
+		}
+
+		for (int i = startIndex; i < endIndex; i += 5) {
 			auto x = _vertices[i];
 			auto z = _vertices[i + 2];
 			auto h = circle._center.x;
@@ -227,10 +247,17 @@ namespace chunk {
 	}
 
 	void Model::reloadVertexData() {
+		if (_swapbuffers) {
+			return;
+		}
 		// Modify the vertex data
-		glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+		glBindBuffer(GL_ARRAY_BUFFER, _VBO_back);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * _vertices.size(), NULL, GL_DYNAMIC_DRAW);
 		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat) * _vertices.size(), _vertices.data());
+		_fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		_swapbuffers = true;
 	}
 
 	bool Model::vertexPosition(int vertexid, glm::vec3& vertexposition) const
@@ -266,8 +293,27 @@ namespace chunk {
 	}
 
 	void Model::draw() {
-		glBindVertexArray(_VAO);
+		glBindVertexArray(_VAO_active);
 		glDrawElements(GL_TRIANGLES, _indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+
+		if (_swapbuffers) {
+			// glGetSynciv 
+			auto ret = glClientWaitSync(_fence, 0, 0);
+			if (ret != GL_TIMEOUT_EXPIRED) {
+				GLuint tempvao = _VAO_active;
+				GLuint tempvbo = _VBO_active;
+				GLuint tempebo = _EBO_active;
+
+				_VAO_active = _VAO_back;
+				_VBO_active = _VBO_back;
+				_EBO_active = _EBO_back;
+
+				_VAO_back = tempvao;
+				_VBO_back = tempvbo;
+				_EBO_back = tempebo;
+				_swapbuffers = false;
+			}
+		}
 	}
 }

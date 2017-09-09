@@ -45,6 +45,8 @@ namespace chunk {
 		void draw();
 	private:
 		void _bindOpenGLBuffers();
+		void _loadVAOData(GLuint& vao, GLuint& vbo, GLuint& ebo);
+
 		// Geometry info
 		float _width;
 		int _rows;
@@ -53,9 +55,16 @@ namespace chunk {
 		std::vector<GLuint> _indices;
 
 		// Opengl buffers
-		GLuint _VAO;
-		GLuint _VBO;
-		GLuint _EBO;
+		GLuint _VAO_active;
+		GLuint _VBO_active;
+		GLuint _EBO_active;
+
+		GLuint _VAO_back;
+		GLuint _VBO_back;
+		GLuint _EBO_back;
+
+		GLsync _fence;
+		bool _swapbuffers;
 	};
 
 }

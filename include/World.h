@@ -26,7 +26,7 @@ class World {
 		World(float chunkwidth);
 		void AddChunk(glm::vec3 localcoords, glm::vec3 worldtransform, int rows, int cols);
 		int GetSelectedChunk(const Ray& ray, float& intersect_point);
-		void DrawWorld(ShaderProgram shader, const glm::mat4& view, const glm::mat4& projection);
+		void DrawWorld(ShaderProgram& shader, const glm::mat4& view, const glm::mat4& projection);
 
 		bool ChunkVertexIntersectsWithRay(int chunkid, const Ray& ray, float intersect_point, unsigned int& vertex_id);
 		bool ChunkFaceIntersectsWithRay(int chunkid, const Ray& ray, float intersect_point, unsigned int& face_index);

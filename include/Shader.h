@@ -38,11 +38,11 @@ class ShaderProgram {
 		}
 
 		GLint getUniformLocation(std::string name) {
-			if (_cacheduniforms.find(name) != _cacheduniforms.end()) {
-				return _cacheduniforms[name];
-			}
+			//if (_cacheduniforms.find(name) != _cacheduniforms.end()) {
+			//	return _cacheduniforms[name];
+			//}
 			GLint uniform = glGetUniformLocation(_shaderprogram, name.c_str());
-			_cacheduniforms.insert({ name, uniform });
+			//_cacheduniforms.insert({ name, uniform });
 
 			return uniform;
 		}
@@ -90,7 +90,7 @@ class ShaderProgram {
 
 			// c_str() gives us a const char*, but we need a non-const one
 			char* src = const_cast<char*>(str.c_str());
-			int32_t size = str.length();
+			GLint size = str.length();
 
 			// Create an empty vertex shader handle
 			GLuint shaderId = glCreateShader(shaderType);
